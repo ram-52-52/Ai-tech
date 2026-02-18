@@ -13,9 +13,12 @@ export async function fetchTrends(): Promise<TrendItem[]> {
     console.log("Fetching Google Trends...");
     
     // Fetch with custom headers to avoid 404/403
-    const response = await fetch(GOOGLE_TRENDS_RSS, {
+    const response = await fetch(`${GOOGLE_TRENDS_RSS}&t=${Date.now()}`, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
       }
     });
 

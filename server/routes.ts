@@ -91,6 +91,16 @@ export async function registerRoutes(
   // --- Trends Routes ---
 
   app.get(api.trends.list.path, async (req, res) => {
+    try {
+      // Always refresh trends when the list is requested to ensure dynamic data
+      const fetchedTrends = await fetchTrends();
+      await storage.clearTrends();
+      for (const t of fetchedTrends) {
+        await storage.createTrend({ topic: t.topic, volume: t.volume });
+      }
+    } catch (error) {
+      console.error("Auto-refresh of trends failed:", error);
+    }
     const trends = await storage.getTrends();
     res.json(trends);
   });
