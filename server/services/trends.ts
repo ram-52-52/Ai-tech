@@ -48,6 +48,11 @@ export async function fetchTrends(): Promise<TrendItem[]> {
       { topic: "Sustainable Energy", volume: 15000 },
       { topic: "Quantum Computing", volume: 10000 },
       { topic: "Remote Work Trends", volume: 5000 },
+      { topic: "Web Development", volume: 4500 },
+      { topic: "Cybersecurity", volume: 4000 },
+      { topic: "Climate Change", volume: 3500 },
+      { topic: "E-commerce", volume: 3000 },
+      { topic: "Blockchain", volume: 2500 },
     ];
   }
 }

@@ -94,10 +94,15 @@ export async function registerRoutes(
     try {
       // Always refresh trends when the list is requested to ensure dynamic data
       const fetchedTrends = await fetchTrends();
+      
+      // Ensure we only keep the latest 10
       await storage.clearTrends();
-      for (const t of fetchedTrends) {
+      const top10 = fetchedTrends.slice(0, 10);
+      for (const t of top10) {
         await storage.createTrend({ topic: t.topic, volume: t.volume });
       }
+      
+      console.log(`Updated trends with ${top10.length} items`);
     } catch (error) {
       console.error("Auto-refresh of trends failed:", error);
     }
