@@ -143,5 +143,46 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/blogs/preview/:id", async (req, res) => {
+    const blog = await storage.getBlog(Number(req.params.id));
+    if (!blog) return res.status(404).send("Blog not found");
+    
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Preview: ${blog.title}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 800px; margin: 0 auto; padding: 2rem; }
+            img { max-width: 100%; height: auto; border-radius: 1rem; margin-bottom: 2rem; }
+            h1 { font-size: 2.5rem; margin-bottom: 1rem; line-height: 1.2; }
+            .meta { color: #666; margin-bottom: 2rem; display: flex; gap: 1rem; font-size: 0.9rem; }
+            .content { font-size: 1.1rem; }
+            .tag { background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 0.4rem; }
+          </style>
+        </head>
+        <body>
+          <div class="meta">
+            <span>${new Date(blog.createdAt).toLocaleDateString()}</span>
+            <span>•</span>
+            <span style="text-transform: uppercase; font-weight: bold; color: #3b82f6;">${blog.topic}</span>
+          </div>
+          <h1>${blog.title}</h1>
+          ${blog.imageUrl ? `<img src="${blog.imageUrl}" alt="${blog.title}">` : ''}
+          <div class="content">
+            ${blog.content}
+          </div>
+          <div style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid #eee;">
+            <h3>Tags</h3>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              ${blog.tags?.map(tag => `<span class="tag">${tag}</span>`).join('') || ''}
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+  });
+
   return httpServer;
 }

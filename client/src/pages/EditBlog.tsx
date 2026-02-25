@@ -197,7 +197,7 @@ export default function EditBlog() {
             <p className="text-sm text-muted-foreground mb-4">
               See how your blog post looks to visitors before publishing.
             </p>
-            <Button variant="outline" className="w-full bg-background">
+            <Button variant="outline" className="w-full bg-background" onClick={() => window.open(`/api/blogs/preview/${id}`, '_blank')}>
               Open Preview
             </Button>
           </div>
