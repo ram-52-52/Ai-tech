@@ -57,10 +57,23 @@ export async function generateBlogPost(topic: string): Promise<InsertBlog> {
 
   const content = contentResponse.choices[0].message.content || "";
 
-  // Step 3: Generate Image (Optional, for now we use a placeholder or generate one)
-  // We can use the image integration we added earlier if we want
-  // For now, let's use a placeholder service or leave empty
-  const imageUrl = `https://placehold.co/600x400?text=${encodeURIComponent(topic)}`;
+  // Step 3: Generate Image using DALL-E (via Replit AI Integrations)
+  let imageUrl = `https://placehold.co/1200x630?text=${encodeURIComponent(metaData.title)}`;
+  try {
+    console.log(`Generating image for: ${metaData.title}`);
+    const imageResponse = await openai.images.generate({
+      model: "dall-e-3",
+      prompt: `A professional, high-quality blog cover image for: "${metaData.title}". Style: modern, clean, digital art or high-quality photography. No text in the image. Description: ${metaData.metaDescription}`,
+      n: 1,
+      size: "1024x1024",
+    });
+    
+    if (imageResponse.data && imageResponse.data[0].url) {
+      imageUrl = imageResponse.data[0].url;
+    }
+  } catch (error) {
+    console.error("Image generation failed, using placeholder:", error);
+  }
 
   return {
     title: metaData.title,
@@ -70,7 +83,7 @@ export async function generateBlogPost(topic: string): Promise<InsertBlog> {
     metaDescription: metaData.metaDescription,
     tags: metaData.tags,
     imageUrl: imageUrl,
-    isPublished: false, // Default to draft, or true if auto-publishing
+    isPublished: false, 
     publishedAt: new Date(),
   };
 }
