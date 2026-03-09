@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { blogs, trends, type Blog, type InsertBlog, type Trend } from "@shared/schema";
+import { blogs, trends, externalSites, scheduledPosts, type Blog, type InsertBlog, type Trend, type ExternalSite, type InsertExternalSite, type ScheduledPost, type InsertScheduledPost } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
@@ -15,6 +15,20 @@ export interface IStorage {
   getTrends(): Promise<Trend[]>;
   createTrend(trend: { topic: string; volume?: number }): Promise<Trend>;
   clearTrends(): Promise<void>;
+
+  // External Sites
+  getExternalSites(): Promise<ExternalSite[]>;
+  getExternalSite(id: number): Promise<ExternalSite | undefined>;
+  createExternalSite(site: InsertExternalSite): Promise<ExternalSite>;
+  updateExternalSite(id: number, site: Partial<InsertExternalSite>): Promise<ExternalSite>;
+  deleteExternalSite(id: number): Promise<void>;
+
+  // Scheduled Posts
+  getScheduledPosts(): Promise<ScheduledPost[]>;
+  getScheduledPost(id: number): Promise<ScheduledPost | undefined>;
+  createScheduledPost(post: InsertScheduledPost): Promise<ScheduledPost>;
+  updateScheduledPost(id: number, post: Partial<InsertScheduledPost>): Promise<ScheduledPost>;
+  deleteScheduledPost(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -60,6 +74,58 @@ export class DatabaseStorage implements IStorage {
 
   async clearTrends(): Promise<void> {
     await db.delete(trends);
+  }
+
+  async getExternalSites(): Promise<ExternalSite[]> {
+    return await db.select().from(externalSites).orderBy(desc(externalSites.createdAt));
+  }
+
+  async getExternalSite(id: number): Promise<ExternalSite | undefined> {
+    const [site] = await db.select().from(externalSites).where(eq(externalSites.id, id));
+    return site;
+  }
+
+  async createExternalSite(site: InsertExternalSite): Promise<ExternalSite> {
+    const [newSite] = await db.insert(externalSites).values(site).returning();
+    return newSite;
+  }
+
+  async updateExternalSite(id: number, updates: Partial<InsertExternalSite>): Promise<ExternalSite> {
+    const [updated] = await db.update(externalSites)
+      .set(updates)
+      .where(eq(externalSites.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteExternalSite(id: number): Promise<void> {
+    await db.delete(externalSites).where(eq(externalSites.id, id));
+  }
+
+  async getScheduledPosts(): Promise<ScheduledPost[]> {
+    return await db.select().from(scheduledPosts).orderBy(desc(scheduledPosts.createdAt));
+  }
+
+  async getScheduledPost(id: number): Promise<ScheduledPost | undefined> {
+    const [post] = await db.select().from(scheduledPosts).where(eq(scheduledPosts.id, id));
+    return post;
+  }
+
+  async createScheduledPost(post: InsertScheduledPost): Promise<ScheduledPost> {
+    const [newPost] = await db.insert(scheduledPosts).values(post).returning();
+    return newPost;
+  }
+
+  async updateScheduledPost(id: number, updates: Partial<InsertScheduledPost>): Promise<ScheduledPost> {
+    const [updated] = await db.update(scheduledPosts)
+      .set(updates)
+      .where(eq(scheduledPosts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteScheduledPost(id: number): Promise<void> {
+    await db.delete(scheduledPosts).where(eq(scheduledPosts.id, id));
   }
 }
 

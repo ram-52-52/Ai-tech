@@ -1,0 +1,335 @@
+import { useState } from "react";
+import { useSites, useCreateSite, useDeleteSite, useScheduledPosts, useCreateScheduledPost, useDeleteScheduledPost } from "@/hooks/use-sites";
+import { useBlogs } from "@/hooks/use-blogs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Trash2, Calendar, Link as LinkIcon, CheckCircle2, Clock } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+
+export default function Settings() {
+  const { data: sites, isLoading: sitesLoading } = useSites();
+  const { data: blogs, isLoading: blogsLoading } = useBlogs();
+  const { data: scheduled, isLoading: scheduledLoading } = useScheduledPosts();
+  const { mutate: createSite, isPending: isCreatingSite } = useCreateSite();
+  const { mutate: deleteSite, isPending: isDeletingSite } = useDeleteSite();
+  const { mutate: createScheduled, isPending: isCreatingScheduled } = useCreateScheduledPost();
+  const { mutate: deleteScheduled, isPending: isDeletingScheduled } = useDeleteScheduledPost();
+  const { toast } = useToast();
+
+  const [siteForm, setSiteForm] = useState({
+    siteName: "",
+    siteType: "wordpress",
+    siteUrl: "",
+    username: "",
+    password: "",
+    isEnabled: true,
+  });
+
+  const [scheduleForm, setScheduleForm] = useState({
+    blogId: "",
+    siteId: "",
+    scheduledAt: "",
+  });
+
+  const handleAddSite = () => {
+    if (!siteForm.siteName || !siteForm.siteUrl || !siteForm.username || !siteForm.password) {
+      toast({ title: "Error", description: "Please fill in all fields", variant: "destructive" });
+      return;
+    }
+
+    createSite(
+      {
+        siteName: siteForm.siteName,
+        siteType: siteForm.siteType,
+        siteUrl: siteForm.siteUrl,
+        username: siteForm.username,
+        password: siteForm.password,
+        isEnabled: siteForm.isEnabled,
+      },
+      {
+        onSuccess: () => {
+          setSiteForm({ siteName: "", siteType: "wordpress", siteUrl: "", username: "", password: "", isEnabled: true });
+          toast({ title: "Success", description: "Site added successfully" });
+        },
+        onError: () => {
+          toast({ title: "Error", description: "Failed to add site", variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  const handleSchedulePost = () => {
+    if (!scheduleForm.blogId || !scheduleForm.siteId || !scheduleForm.scheduledAt) {
+      toast({ title: "Error", description: "Please select blog, site, and schedule time", variant: "destructive" });
+      return;
+    }
+
+    createScheduled(
+      {
+        blogId: Number(scheduleForm.blogId),
+        siteId: Number(scheduleForm.siteId),
+        scheduledAt: new Date(scheduleForm.scheduledAt),
+      },
+      {
+        onSuccess: () => {
+          setScheduleForm({ blogId: "", siteId: "", scheduledAt: "" });
+          toast({ title: "Success", description: "Post scheduled successfully" });
+        },
+        onError: () => {
+          toast({ title: "Error", description: "Failed to schedule post", variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-display font-bold text-foreground">Settings</h1>
+        <p className="text-muted-foreground mt-1">Manage external sites and schedule blog posts</p>
+      </div>
+
+      {/* External Sites Section */}
+      <div className="bg-card rounded-2xl border border-border/50 p-8 shadow-sm space-y-6">
+        <div className="border-b border-border/50 pb-4">
+          <h2 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
+            <LinkIcon className="w-6 h-6 text-primary" />
+            External Sites
+          </h2>
+          <p className="text-sm text-muted-foreground mt-2">Add websites where you want to auto-post your blogs</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="siteName">Site Name</Label>
+            <Input
+              id="siteName"
+              placeholder="My WordPress Blog"
+              value={siteForm.siteName}
+              onChange={(e) => setSiteForm({ ...siteForm, siteName: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="siteType">Site Type</Label>
+            <Select value={siteForm.siteType} onValueChange={(val) => setSiteForm({ ...siteForm, siteType: val })}>
+              <SelectTrigger id="siteType">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="wordpress">WordPress</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="linkedin">LinkedIn</SelectItem>
+                <SelectItem value="ghost">Ghost</SelectItem>
+                <SelectItem value="custom">Custom API</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="siteUrl">Website URL</Label>
+            <Input
+              id="siteUrl"
+              placeholder="https://myblog.com"
+              value={siteForm.siteUrl}
+              onChange={(e) => setSiteForm({ ...siteForm, siteUrl: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username">Username / Email</Label>
+            <Input
+              id="username"
+              placeholder="admin@example.com"
+              value={siteForm.username}
+              onChange={(e) => setSiteForm({ ...siteForm, username: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">Password / API Key</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={siteForm.password}
+              onChange={(e) => setSiteForm({ ...siteForm, password: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2 flex items-end">
+            <div className="flex items-center gap-3 w-full">
+              <Switch
+                checked={siteForm.isEnabled}
+                onCheckedChange={(checked) => setSiteForm({ ...siteForm, isEnabled: checked })}
+              />
+              <Label className="text-sm cursor-pointer">Enabled</Label>
+            </div>
+          </div>
+        </div>
+
+        <Button onClick={handleAddSite} disabled={isCreatingSite} className="w-full shadow-lg shadow-primary/20">
+          <Plus className="w-4 h-4 mr-2" />
+          {isCreatingSite ? "Adding..." : "Add Site"}
+        </Button>
+
+        {sitesLoading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto" />
+          </div>
+        ) : sites && sites.length > 0 ? (
+          <div className="space-y-3 pt-4">
+            {sites.map((site) => (
+              <div key={site.id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border/50">
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">{site.siteName}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    <span>{site.siteUrl}</span>
+                    <span>•</span>
+                    <span className="uppercase">{site.siteType}</span>
+                    {site.isEnabled ? (
+                      <>
+                        <span>•</span>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => deleteSite(site.id)}
+                  disabled={isDeletingSite}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No sites configured yet. Add one to get started!</p>
+          </div>
+        )}
+      </div>
+
+      {/* Schedule Posts Section */}
+      <div className="bg-card rounded-2xl border border-border/50 p-8 shadow-sm space-y-6">
+        <div className="border-b border-border/50 pb-4">
+          <h2 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
+            <Calendar className="w-6 h-6 text-primary" />
+            Schedule Blog Posts
+          </h2>
+          <p className="text-sm text-muted-foreground mt-2">Schedule your blogs to be posted to external sites</p>
+        </div>
+
+        {!sites || sites.length === 0 ? (
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <p className="text-sm text-amber-900 dark:text-amber-200">
+              Add external sites first before scheduling posts.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="selectBlog">Select Blog</Label>
+              <Select value={scheduleForm.blogId} onValueChange={(val) => setScheduleForm({ ...scheduleForm, blogId: val })}>
+                <SelectTrigger id="selectBlog">
+                  <SelectValue placeholder="Choose a blog..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {blogs?.map((blog) => (
+                    <SelectItem key={blog.id} value={String(blog.id)}>
+                      {blog.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="selectSite">Select Site</Label>
+              <Select value={scheduleForm.siteId} onValueChange={(val) => setScheduleForm({ ...scheduleForm, siteId: val })}>
+                <SelectTrigger id="selectSite">
+                  <SelectValue placeholder="Choose a site..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sites?.map((site) => (
+                    <SelectItem key={site.id} value={String(site.id)}>
+                      {site.siteName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="scheduledAt">Schedule Date & Time</Label>
+              <Input
+                id="scheduledAt"
+                type="datetime-local"
+                value={scheduleForm.scheduledAt}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, scheduledAt: e.target.value })}
+              />
+            </div>
+          </div>
+        )}
+
+        {sites && sites.length > 0 && (
+          <Button onClick={handleSchedulePost} disabled={isCreatingScheduled} className="w-full shadow-lg shadow-primary/20">
+            <Calendar className="w-4 h-4 mr-2" />
+            {isCreatingScheduled ? "Scheduling..." : "Schedule Post"}
+          </Button>
+        )}
+
+        {scheduledLoading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto" />
+          </div>
+        ) : scheduled && scheduled.length > 0 ? (
+          <div className="space-y-3 pt-4">
+            {scheduled.map((post) => {
+              const blog = blogs?.find((b) => b.id === post.blogId);
+              const site = sites?.find((s) => s.id === post.siteId);
+              return (
+                <div key={post.id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border/50">
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground">{blog?.title || "Unknown Blog"}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                      <span>→ {site?.siteName || "Unknown Site"}</span>
+                      <span>•</span>
+                      <Clock className="w-3 h-3" />
+                      <span>{format(new Date(post.scheduledAt), "MMM d, yyyy h:mm a")}</span>
+                      <span>•</span>
+                      <span className={post.status === "posted" ? "text-emerald-600" : "text-amber-600"}>
+                        {post.status.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => deleteScheduled(post.id)}
+                    disabled={isDeletingScheduled}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No scheduled posts yet.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

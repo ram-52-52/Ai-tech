@@ -143,6 +143,69 @@ export async function registerRoutes(
     }
   });
 
+  // --- External Sites Routes ---
+
+  app.get(api.externalSites.list.path, async (req, res) => {
+    const sites = await storage.getExternalSites();
+    res.json(sites);
+  });
+
+  app.post(api.externalSites.create.path, async (req, res) => {
+    try {
+      const input = api.externalSites.create.input.parse(req.body);
+      const site = await storage.createExternalSite(input);
+      res.status(201).json(site);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  app.put(api.externalSites.update.path, async (req, res) => {
+    try {
+      const input = api.externalSites.update.input.parse(req.body);
+      const site = await storage.updateExternalSite(Number(req.params.id), input);
+      res.json(site);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  app.delete(api.externalSites.delete.path, async (req, res) => {
+    await storage.deleteExternalSite(Number(req.params.id));
+    res.status(204).send();
+  });
+
+  // --- Scheduled Posts Routes ---
+
+  app.get(api.scheduledPosts.list.path, async (req, res) => {
+    const posts = await storage.getScheduledPosts();
+    res.json(posts);
+  });
+
+  app.post(api.scheduledPosts.create.path, async (req, res) => {
+    try {
+      const input = api.scheduledPosts.create.input.parse(req.body);
+      const post = await storage.createScheduledPost(input);
+      res.status(201).json(post);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  app.delete(api.scheduledPosts.delete.path, async (req, res) => {
+    await storage.deleteScheduledPost(Number(req.params.id));
+    res.status(204).send();
+  });
+
   app.get("/api/blogs/preview/:id", async (req, res) => {
     const blog = await storage.getBlog(Number(req.params.id));
     if (!blog) return res.status(404).send("Blog not found");

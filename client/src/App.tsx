@@ -8,6 +8,7 @@ import BlogList from "@/pages/BlogList";
 import Generate from "@/pages/Generate";
 import Trends from "@/pages/Trends";
 import EditBlog from "@/pages/EditBlog";
+import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -22,6 +23,7 @@ function Router() {
             <Route path="/blogs/:id" component={EditBlog} />
             <Route path="/generate" component={Generate} />
             <Route path="/trends" component={Trends} />
+            <Route path="/settings" component={Settings} />
             <Route component={NotFound} />
           </Switch>
         </div>

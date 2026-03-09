@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertBlogSchema, blogs, trends } from './schema';
+import { insertBlogSchema, insertExternalSiteSchema, insertScheduledPostSchema, blogs, trends, externalSites, scheduledPosts } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -92,6 +92,69 @@ export const api = {
         200: z.array(z.custom<typeof trends.$inferSelect>()),
       }
     }
+  },
+  externalSites: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/sites' as const,
+      responses: {
+        200: z.array(z.custom<typeof externalSites.$inferSelect>()),
+      },
+    },
+    get: {
+      method: 'GET' as const,
+      path: '/api/sites/:id' as const,
+      responses: {
+        200: z.custom<typeof externalSites.$inferSelect>(),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/sites' as const,
+      input: insertExternalSiteSchema,
+      responses: {
+        201: z.custom<typeof externalSites.$inferSelect>(),
+      },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/sites/:id' as const,
+      input: insertExternalSiteSchema.partial(),
+      responses: {
+        200: z.custom<typeof externalSites.$inferSelect>(),
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/sites/:id' as const,
+      responses: {
+        204: z.void(),
+      },
+    },
+  },
+  scheduledPosts: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/scheduled' as const,
+      responses: {
+        200: z.array(z.custom<typeof scheduledPosts.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/scheduled' as const,
+      input: insertScheduledPostSchema,
+      responses: {
+        201: z.custom<typeof scheduledPosts.$inferSelect>(),
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/scheduled/:id' as const,
+      responses: {
+        204: z.void(),
+      },
+    },
   }
 };
 

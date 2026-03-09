@@ -23,14 +23,48 @@ export const trends = pgTable("trends", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const externalSites = pgTable("external_sites", {
+  id: serial("id").primaryKey(),
+  siteName: text("site_name").notNull(),
+  siteType: text("site_type").notNull(),
+  siteUrl: text("site_url").notNull(),
+  username: text("username").notNull(),
+  password: text("password").notNull(),
+  isEnabled: boolean("is_enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const scheduledPosts = pgTable("scheduled_posts", {
+  id: serial("id").primaryKey(),
+  blogId: integer("blog_id").notNull(),
+  siteId: integer("site_id").notNull(),
+  scheduledAt: timestamp("scheduled_at").notNull(),
+  status: text("status").default("pending").notNull(),
+  postedAt: timestamp("posted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertBlogSchema = createInsertSchema(blogs).omit({ 
   id: true, 
   createdAt: true, 
   publishedAt: true 
 });
 
+export const insertExternalSiteSchema = createInsertSchema(externalSites).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertScheduledPostSchema = createInsertSchema(scheduledPosts).omit({
+  id: true,
+  postedAt: true,
+  createdAt: true,
+});
+
 export type Blog = typeof blogs.$inferSelect;
 export type InsertBlog = z.infer<typeof insertBlogSchema>;
 export type Trend = typeof trends.$inferSelect;
-
-// Enum for status if needed, but boolean isPublished is simple enough for now
+export type ExternalSite = typeof externalSites.$inferSelect;
+export type InsertExternalSite = z.infer<typeof insertExternalSiteSchema>;
+export type ScheduledPost = typeof scheduledPosts.$inferSelect;
+export type InsertScheduledPost = z.infer<typeof insertScheduledPostSchema>;
