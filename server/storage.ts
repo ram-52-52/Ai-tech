@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { blogs, trends, externalSites, scheduledPosts, type Blog, type InsertBlog, type Trend, type ExternalSite, type InsertExternalSite, type ScheduledPost, type InsertScheduledPost } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, lte, and } from "drizzle-orm";
 
 export interface IStorage {
   // Blogs
@@ -26,8 +26,9 @@ export interface IStorage {
   // Scheduled Posts
   getScheduledPosts(): Promise<ScheduledPost[]>;
   getScheduledPost(id: number): Promise<ScheduledPost | undefined>;
+  getPendingDueScheduledPosts(): Promise<ScheduledPost[]>;
   createScheduledPost(post: InsertScheduledPost): Promise<ScheduledPost>;
-  updateScheduledPost(id: number, post: Partial<InsertScheduledPost>): Promise<ScheduledPost>;
+  updateScheduledPost(id: number, updates: Partial<Pick<ScheduledPost, "status" | "postedAt" | "errorMessage">>): Promise<ScheduledPost>;
   deleteScheduledPost(id: number): Promise<void>;
 }
 
@@ -111,12 +112,21 @@ export class DatabaseStorage implements IStorage {
     return post;
   }
 
+  async getPendingDueScheduledPosts(): Promise<ScheduledPost[]> {
+    return await db.select().from(scheduledPosts).where(
+      and(
+        eq(scheduledPosts.status, "pending"),
+        lte(scheduledPosts.scheduledAt, new Date())
+      )
+    );
+  }
+
   async createScheduledPost(post: InsertScheduledPost): Promise<ScheduledPost> {
     const [newPost] = await db.insert(scheduledPosts).values(post).returning();
     return newPost;
   }
 
-  async updateScheduledPost(id: number, updates: Partial<InsertScheduledPost>): Promise<ScheduledPost> {
+  async updateScheduledPost(id: number, updates: Partial<Pick<ScheduledPost, "status" | "postedAt" | "errorMessage">>): Promise<ScheduledPost> {
     const [updated] = await db.update(scheduledPosts)
       .set(updates)
       .where(eq(scheduledPosts.id, id))

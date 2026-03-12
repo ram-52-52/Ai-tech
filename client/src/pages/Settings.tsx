@@ -306,10 +306,13 @@ export default function Settings() {
                       <Clock className="w-3 h-3" />
                       <span>{format(new Date(post.scheduledAt), "MMM d, yyyy h:mm a")}</span>
                       <span>•</span>
-                      <span className={post.status === "posted" ? "text-emerald-600" : "text-amber-600"}>
+                      <span className={post.status === "posted" ? "text-emerald-600" : post.status === "failed" ? "text-destructive font-semibold" : "text-amber-600"}>
                         {post.status.toUpperCase()}
                       </span>
                     </div>
+                    {post.status === "failed" && (post as any).errorMessage && (
+                      <p className="text-xs text-destructive/80 mt-1">{(post as any).errorMessage}</p>
+                    )}
                   </div>
                   <Button
                     variant="ghost"

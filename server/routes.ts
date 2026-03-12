@@ -3,8 +3,9 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { generateBlogPost } from "./services/openai"; // We will create this
-import { fetchTrends } from "./services/trends";     // We will create this
+import { generateBlogPost } from "./services/openai";
+import { fetchTrends } from "./services/trends";
+import { publishBlog } from "./services/publisher";
 import cron from "node-cron";
 
 export async function registerRoutes(
@@ -125,8 +126,7 @@ export async function registerRoutes(
     }
   });
 
-  // --- Cron Job (Every 1 Hour) ---
-  // Schedule a task to run every hour
+  // --- Cron Job: Auto-Blog (Every 1 Hour) ---
   cron.schedule("0 * * * *", async () => {
     console.log("⏰ Running Auto-Blog Cron Job...");
     try {
@@ -135,11 +135,62 @@ export async function registerRoutes(
         const topTrend = trends[0];
         console.log(`Creating blog for top trend: ${topTrend.topic}`);
         const generatedBlog = await generateBlogPost(topTrend.topic);
-        await storage.createBlog({ ...generatedBlog, isPublished: true, publishedAt: new Date() }); // Auto-publish? Or draft? Let's auto-publish for now per spec.
+        await storage.createBlog({ ...generatedBlog, isPublished: true, publishedAt: new Date() });
         console.log("✅ Auto-blog created successfully.");
       }
     } catch (error) {
       console.error("❌ Auto-blog cron failed:", error);
+    }
+  });
+
+  // --- Cron Job: Process Scheduled Posts (Every Minute) ---
+  const processScheduledPosts = async () => {
+    const duePosts = await storage.getPendingDueScheduledPosts();
+    if (duePosts.length === 0) return;
+
+    console.log(`⏰ Processing ${duePosts.length} due scheduled post(s)...`);
+
+    for (const post of duePosts) {
+      const [blog, site] = await Promise.all([
+        storage.getBlog(post.blogId),
+        storage.getExternalSite(post.siteId),
+      ]);
+
+      if (!blog || !site) {
+        await storage.updateScheduledPost(post.id, {
+          status: "failed",
+          errorMessage: !blog ? "Blog not found" : "Site not found",
+        });
+        continue;
+      }
+
+      const result = await publishBlog(blog, site);
+
+      if (result.success) {
+        console.log(`✅ Published "${blog.title}" to ${site.siteName}${result.postUrl ? " — " + result.postUrl : ""}`);
+        await storage.updateScheduledPost(post.id, {
+          status: "posted",
+          postedAt: new Date(),
+        });
+      } else {
+        console.error(`❌ Failed to publish "${blog.title}" to ${site.siteName}: ${result.error}`);
+        await storage.updateScheduledPost(post.id, {
+          status: "failed",
+          errorMessage: result.error ?? "Unknown error",
+        });
+      }
+    }
+  };
+
+  cron.schedule("* * * * *", processScheduledPosts);
+
+  // --- Manual trigger for testing ---
+  app.post("/api/scheduled/process", async (_req, res) => {
+    try {
+      await processScheduledPosts();
+      res.json({ message: "Processed scheduled posts" });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
     }
   });
 

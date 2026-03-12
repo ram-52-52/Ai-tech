@@ -323,11 +323,14 @@ export default function EditBlog() {
                           <Clock className="w-3 h-3 shrink-0" />
                           <span>{format(new Date(post.scheduledAt), "MMM d, yyyy h:mm a")}</span>
                         </div>
-                        <span className={`text-xs font-semibold mt-0.5 inline-block ${post.status === "posted" ? "text-emerald-600" : "text-amber-600"}`}>
+                        <span className={`text-xs font-semibold mt-0.5 inline-block ${post.status === "posted" ? "text-emerald-600" : post.status === "failed" ? "text-destructive" : "text-amber-600"}`}>
                           {post.status === "posted" ? (
                             <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Posted</span>
-                          ) : post.status.toUpperCase()}
+                          ) : post.status === "failed" ? "⚠ FAILED" : post.status.toUpperCase()}
                         </span>
+                        {post.status === "failed" && (post as any).errorMessage && (
+                          <p className="text-xs text-destructive/80 mt-0.5 break-words">{(post as any).errorMessage}</p>
+                        )}
                       </div>
                       <Button
                         variant="ghost"

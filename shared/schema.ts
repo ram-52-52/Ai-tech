@@ -41,6 +41,7 @@ export const scheduledPosts = pgTable("scheduled_posts", {
   scheduledAt: timestamp("scheduled_at").notNull(),
   status: text("status").default("pending").notNull(),
   postedAt: timestamp("posted_at"),
+  errorMessage: text("error_message"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
