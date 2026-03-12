@@ -254,7 +254,7 @@ export default function Settings() {
                       {editingSiteId === site.id ? <X className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
                       {editingSiteId === site.id ? "Cancel" : "Edit"}
                     </Button>
-                    {(site.siteType === "medium" || site.siteType === "wordpress" || site.siteType === "ghost") && (
+                    {(site.siteType === "medium" || site.siteType === "wordpress" || site.siteType === "ghost" || site.siteType === "linkedin") && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -289,7 +289,13 @@ export default function Settings() {
                         Get it at: <strong>medium.com → Settings → Security and apps → Integration tokens</strong>
                       </p>
                     )}
-                    {site.siteType !== "medium" && (
+                    {site.siteType === "linkedin" && (
+                      <p className="text-xs text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md px-3 py-2">
+                        LinkedIn requires an <strong>Access Token</strong>.<br />
+                        Get one at: <strong>linkedin.com/developers</strong> → create an app → Products → "Share on LinkedIn" → OAuth 2.0 Tools → generate a token with <code>w_member_social</code> scope.
+                      </p>
+                    )}
+                    {site.siteType !== "medium" && site.siteType !== "linkedin" && (
                       <div className="space-y-1">
                         <Label className="text-xs">Username</Label>
                         <Input
@@ -303,13 +309,13 @@ export default function Settings() {
                     )}
                     <div className="space-y-1">
                       <Label className="text-xs">
-                        {site.siteType === "medium" ? "Integration Token" : site.siteType === "ghost" ? "Admin API Key (id:secret)" : "Application Password"}
+                        {site.siteType === "medium" ? "Integration Token" : site.siteType === "linkedin" ? "Access Token" : site.siteType === "ghost" ? "Admin API Key (id:secret)" : "Application Password"}
                       </Label>
                       <Input
                         type="password"
                         value={editCredentials.password}
                         onChange={(e) => setEditCredentials({ ...editCredentials, password: e.target.value })}
-                        placeholder={site.siteType === "medium" ? "Paste your Integration Token here..." : site.siteType === "ghost" ? "id:secret" : "App password"}
+                        placeholder={site.siteType === "medium" ? "Paste your Integration Token here..." : site.siteType === "linkedin" ? "Paste your LinkedIn Access Token here..." : site.siteType === "ghost" ? "id:secret" : "App password"}
                         className="h-8 text-sm font-mono"
                         data-testid={`input-edit-password-${site.id}`}
                       />

@@ -134,6 +134,68 @@ async function publishToGhost(blog: Blog, site: ExternalSite): Promise<PublishRe
   }
 }
 
+async function publishToLinkedIn(blog: Blog, site: ExternalSite): Promise<PublishResult> {
+  const accessToken = site.password?.trim();
+  if (!accessToken) return { success: false, error: "No LinkedIn access token provided" };
+
+  try {
+    const meRes = await fetch("https://api.linkedin.com/v2/me", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-Restli-Protocol-Version": "2.0.0",
+      },
+    });
+
+    if (!meRes.ok) {
+      const err = await meRes.text();
+      return { success: false, error: `LinkedIn auth failed: ${err}` };
+    }
+
+    const meData = await meRes.json() as { id: string };
+    const authorUrn = `urn:li:person:${meData.id}`;
+
+    const summary = blog.metaDescription
+      ? `${blog.title}\n\n${blog.metaDescription}`
+      : blog.title;
+
+    const postRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "X-Restli-Protocol-Version": "2.0.0",
+      },
+      body: JSON.stringify({
+        author: authorUrn,
+        lifecycleState: "PUBLISHED",
+        specificContent: {
+          "com.linkedin.ugc.ShareContent": {
+            shareCommentary: { text: summary },
+            shareMediaCategory: "NONE",
+          },
+        },
+        visibility: {
+          "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
+        },
+      }),
+    });
+
+    if (!postRes.ok) {
+      const err = await postRes.text();
+      return { success: false, error: `LinkedIn post failed: ${err}` };
+    }
+
+    const postData = await postRes.json() as { id?: string };
+    const postUrl = postData.id
+      ? `https://www.linkedin.com/feed/update/${postData.id}/`
+      : undefined;
+
+    return { success: true, postUrl };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function publishBlog(blog: Blog, site: ExternalSite): Promise<PublishResult> {
   console.log(`📤 Publishing blog "${blog.title}" to ${site.siteName} (${site.siteType})`);
 
@@ -145,7 +207,7 @@ export async function publishBlog(blog: Blog, site: ExternalSite): Promise<Publi
     case "ghost":
       return publishToGhost(blog, site);
     case "linkedin":
-      return { success: false, error: "LinkedIn publishing requires OAuth — not supported via password auth." };
+      return publishToLinkedIn(blog, site);
     case "custom":
       return { success: false, error: "Custom API publishing not yet configured." };
     default:

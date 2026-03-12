@@ -284,6 +284,19 @@ export async function registerRoutes(
         const data = await r.json() as { site: { title: string } };
         return res.json({ message: `Connected to Ghost: "${data.site?.title}"` });
 
+      } else if (site.siteType === "linkedin") {
+        const token = site.password?.trim();
+        const r = await fetch("https://api.linkedin.com/v2/me", {
+          headers: { Authorization: `Bearer ${token}`, "X-Restli-Protocol-Version": "2.0.0" },
+        });
+        if (!r.ok) {
+          const err = await r.text();
+          return res.status(400).json({ message: `LinkedIn auth failed — ${err}` });
+        }
+        const data = await r.json() as { localizedFirstName?: string; localizedLastName?: string };
+        const name = [data.localizedFirstName, data.localizedLastName].filter(Boolean).join(" ") || "Unknown";
+        return res.json({ message: `Connected as ${name}` });
+
       } else {
         return res.status(400).json({ message: `Test not supported for ${site.siteType}` });
       }
