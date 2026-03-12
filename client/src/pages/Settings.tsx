@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Calendar, Link as LinkIcon, CheckCircle2, Clock } from "lucide-react";
+import { Plus, Trash2, Calendar, Link as LinkIcon, CheckCircle2, Clock, Plug } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Settings() {
   const { data: sites, isLoading: sitesLoading } = useSites();
@@ -19,6 +20,20 @@ export default function Settings() {
   const { mutate: createScheduled, isPending: isCreatingScheduled } = useCreateScheduledPost();
   const { mutate: deleteScheduled, isPending: isDeletingScheduled } = useDeleteScheduledPost();
   const { toast } = useToast();
+  const [testingSiteId, setTestingSiteId] = useState<number | null>(null);
+
+  const testConnection = async (siteId: number) => {
+    setTestingSiteId(siteId);
+    try {
+      const data = await apiRequest("POST", `/api/external-sites/${siteId}/test`) as { message: string };
+      toast({ title: "Connection Successful", description: data.message });
+    } catch (err: any) {
+      const msg = err?.message ?? "Connection failed";
+      toast({ title: "Connection Failed", description: msg, variant: "destructive" });
+    } finally {
+      setTestingSiteId(null);
+    }
+  };
 
   const [siteForm, setSiteForm] = useState({
     siteName: "",
@@ -199,15 +214,31 @@ export default function Settings() {
                     ) : null}
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => deleteSite(site.id)}
-                  disabled={isDeletingSite}
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  {(site.siteType === "medium" || site.siteType === "wordpress" || site.siteType === "ghost") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => testConnection(site.id)}
+                      disabled={testingSiteId === site.id}
+                      className="text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                      data-testid={`button-test-site-${site.id}`}
+                    >
+                      <Plug className="w-3.5 h-3.5" />
+                      {testingSiteId === site.id ? "Testing..." : "Test"}
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => deleteSite(site.id)}
+                    disabled={isDeletingSite}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    data-testid={`button-delete-site-${site.id}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

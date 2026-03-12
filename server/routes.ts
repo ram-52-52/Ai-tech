@@ -232,6 +232,65 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  // --- Test Connection ---
+  app.post("/api/external-sites/:id/test", async (req, res) => {
+    const site = await storage.getExternalSite(Number(req.params.id));
+    if (!site) return res.status(404).json({ message: "Site not found" });
+
+    try {
+      if (site.siteType === "medium") {
+        const r = await fetch("https://api.medium.com/v1/me", {
+          headers: { Authorization: `Bearer ${site.password}`, "Content-Type": "application/json" },
+        });
+        if (!r.ok) {
+          const err = await r.text();
+          return res.status(400).json({ message: `Medium auth failed — ${err}` });
+        }
+        const data = await r.json() as { data: { name: string; username: string } };
+        return res.json({ message: `Connected as @${data.data.username} (${data.data.name})` });
+
+      } else if (site.siteType === "wordpress") {
+        const base = site.siteUrl.replace(/\/$/, "");
+        const credentials = Buffer.from(`${site.username}:${site.password}`).toString("base64");
+        const r = await fetch(`${base}/wp-json/wp/v2/users/me`, {
+          headers: { Authorization: `Basic ${credentials}` },
+        });
+        if (!r.ok) {
+          const err = await r.text();
+          return res.status(400).json({ message: `WordPress auth failed — ${err}` });
+        }
+        const data = await r.json() as { name: string };
+        return res.json({ message: `Connected as ${data.name}` });
+
+      } else if (site.siteType === "ghost") {
+        const base = site.siteUrl.replace(/\/$/, "");
+        const adminApiKey = site.password;
+        const [id, secret] = adminApiKey.split(":");
+        if (!id || !secret) return res.status(400).json({ message: "Ghost key must be in id:secret format" });
+        const { createHmac } = await import("crypto");
+        const now = Math.floor(Date.now() / 1000);
+        const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT", kid: id })).toString("base64url");
+        const payload = Buffer.from(JSON.stringify({ iat: now, exp: now + 300, aud: "/admin/" })).toString("base64url");
+        const signature = createHmac("sha256", Buffer.from(secret, "hex")).update(`${header}.${payload}`).digest("base64url");
+        const token = `${header}.${payload}.${signature}`;
+        const r = await fetch(`${base}/ghost/api/admin/site/`, {
+          headers: { Authorization: `Ghost ${token}` },
+        });
+        if (!r.ok) {
+          const err = await r.text();
+          return res.status(400).json({ message: `Ghost auth failed — ${err}` });
+        }
+        const data = await r.json() as { site: { title: string } };
+        return res.json({ message: `Connected to Ghost: "${data.site?.title}"` });
+
+      } else {
+        return res.status(400).json({ message: `Test not supported for ${site.siteType}` });
+      }
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // --- Scheduled Posts Routes ---
 
   app.get(api.scheduledPosts.list.path, async (req, res) => {
