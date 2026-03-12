@@ -7,7 +7,7 @@ export interface PublishResult {
 }
 
 async function publishToMedium(blog: Blog, site: ExternalSite): Promise<PublishResult> {
-  const integrationToken = site.password;
+  const integrationToken = site.password?.trim();
 
   try {
     const meRes = await fetch("https://api.medium.com/v1/me", {

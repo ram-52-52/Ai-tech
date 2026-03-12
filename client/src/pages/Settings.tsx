@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useSites, useCreateSite, useDeleteSite, useScheduledPosts, useCreateScheduledPost, useDeleteScheduledPost } from "@/hooks/use-sites";
+import { useSites, useCreateSite, useUpdateSite, useDeleteSite, useScheduledPosts, useCreateScheduledPost, useDeleteScheduledPost } from "@/hooks/use-sites";
 import { useBlogs } from "@/hooks/use-blogs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Calendar, Link as LinkIcon, CheckCircle2, Clock, Plug } from "lucide-react";
+import { Plus, Trash2, Calendar, Link as LinkIcon, CheckCircle2, Clock, Plug, Pencil, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -16,11 +16,38 @@ export default function Settings() {
   const { data: blogs, isLoading: blogsLoading } = useBlogs();
   const { data: scheduled, isLoading: scheduledLoading } = useScheduledPosts();
   const { mutate: createSite, isPending: isCreatingSite } = useCreateSite();
+  const { mutate: updateSite, isPending: isUpdatingSite } = useUpdateSite();
   const { mutate: deleteSite, isPending: isDeletingSite } = useDeleteSite();
   const { mutate: createScheduled, isPending: isCreatingScheduled } = useCreateScheduledPost();
   const { mutate: deleteScheduled, isPending: isDeletingScheduled } = useDeleteScheduledPost();
   const { toast } = useToast();
   const [testingSiteId, setTestingSiteId] = useState<number | null>(null);
+  const [editingSiteId, setEditingSiteId] = useState<number | null>(null);
+  const [editCredentials, setEditCredentials] = useState({ username: "", password: "" });
+
+  const startEditing = (site: { id: number; username: string | null; password: string | null }) => {
+    setEditingSiteId(site.id);
+    setEditCredentials({ username: site.username ?? "", password: site.password ?? "" });
+  };
+
+  const saveCredentials = (siteId: number) => {
+    if (!editCredentials.password.trim()) {
+      toast({ title: "Error", description: "Token / Password cannot be empty", variant: "destructive" });
+      return;
+    }
+    updateSite(
+      { id: siteId, data: { username: editCredentials.username.trim(), password: editCredentials.password.trim() } },
+      {
+        onSuccess: () => {
+          toast({ title: "Credentials updated", description: "Saved successfully. Click Test to verify." });
+          setEditingSiteId(null);
+        },
+        onError: (err: any) => {
+          toast({ title: "Update failed", description: err?.message ?? "Unknown error", variant: "destructive" });
+        },
+      }
+    );
+  };
 
   const testConnection = async (siteId: number) => {
     setTestingSiteId(siteId);
@@ -199,46 +226,108 @@ export default function Settings() {
         ) : sites && sites.length > 0 ? (
           <div className="space-y-3 pt-4">
             {sites.map((site) => (
-              <div key={site.id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border/50">
-                <div className="flex-1">
-                  <p className="font-semibold text-foreground">{site.siteName}</p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                    <span>{site.siteUrl}</span>
-                    <span>•</span>
-                    <span className="uppercase">{site.siteType}</span>
-                    {site.isEnabled ? (
-                      <>
-                        <span>•</span>
-                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                      </>
-                    ) : null}
+              <div key={site.id} className="bg-secondary/30 rounded-lg border border-border/50 overflow-hidden">
+                <div className="flex items-center justify-between p-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-foreground">{site.siteName}</p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
+                      <span className="truncate max-w-[180px]">{site.siteUrl}</span>
+                      <span>•</span>
+                      <span className="uppercase font-medium">{site.siteType}</span>
+                      {site.isEnabled ? (
+                        <>
+                          <span>•</span>
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                          <span className="text-emerald-600">Enabled</span>
+                        </>
+                      ) : <span className="text-muted-foreground/60">Disabled</span>}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  {(site.siteType === "medium" || site.siteType === "wordpress" || site.siteType === "ghost") && (
+                  <div className="flex items-center gap-1 shrink-0 ml-2">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => testConnection(site.id)}
-                      disabled={testingSiteId === site.id}
+                      onClick={() => editingSiteId === site.id ? setEditingSiteId(null) : startEditing(site)}
                       className="text-xs text-muted-foreground hover:text-foreground gap-1.5"
-                      data-testid={`button-test-site-${site.id}`}
+                      data-testid={`button-edit-site-${site.id}`}
                     >
-                      <Plug className="w-3.5 h-3.5" />
-                      {testingSiteId === site.id ? "Testing..." : "Test"}
+                      {editingSiteId === site.id ? <X className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
+                      {editingSiteId === site.id ? "Cancel" : "Edit"}
                     </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => deleteSite(site.id)}
-                    disabled={isDeletingSite}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    data-testid={`button-delete-site-${site.id}`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                    {(site.siteType === "medium" || site.siteType === "wordpress" || site.siteType === "ghost") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => testConnection(site.id)}
+                        disabled={testingSiteId === site.id}
+                        className="text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                        data-testid={`button-test-site-${site.id}`}
+                      >
+                        <Plug className="w-3.5 h-3.5" />
+                        {testingSiteId === site.id ? "Testing..." : "Test"}
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteSite(site.id)}
+                      disabled={isDeletingSite}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      data-testid={`button-delete-site-${site.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
+
+                {editingSiteId === site.id && (
+                  <div className="border-t border-border/50 bg-background/50 p-4 space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Update Credentials</p>
+                    {site.siteType === "medium" && (
+                      <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2">
+                        Medium requires an <strong>Integration Token</strong> — not your login password.<br />
+                        Get it at: <strong>medium.com → Settings → Security and apps → Integration tokens</strong>
+                      </p>
+                    )}
+                    {site.siteType !== "medium" && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">Username</Label>
+                        <Input
+                          value={editCredentials.username}
+                          onChange={(e) => setEditCredentials({ ...editCredentials, username: e.target.value })}
+                          placeholder="Username"
+                          className="h-8 text-sm"
+                          data-testid={`input-edit-username-${site.id}`}
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <Label className="text-xs">
+                        {site.siteType === "medium" ? "Integration Token" : site.siteType === "ghost" ? "Admin API Key (id:secret)" : "Application Password"}
+                      </Label>
+                      <Input
+                        type="password"
+                        value={editCredentials.password}
+                        onChange={(e) => setEditCredentials({ ...editCredentials, password: e.target.value })}
+                        placeholder={site.siteType === "medium" ? "Paste your Integration Token here..." : site.siteType === "ghost" ? "id:secret" : "App password"}
+                        className="h-8 text-sm font-mono"
+                        data-testid={`input-edit-password-${site.id}`}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {editCredentials.password.trim().length > 0 && `${editCredentials.password.trim().length} characters`}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => saveCredentials(site.id)}
+                      disabled={isUpdatingSite}
+                      className="w-full"
+                      data-testid={`button-save-credentials-${site.id}`}
+                    >
+                      {isUpdatingSite ? "Saving..." : "Save & Close"}
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -239,8 +239,9 @@ export async function registerRoutes(
 
     try {
       if (site.siteType === "medium") {
+        const token = site.password?.trim();
         const r = await fetch("https://api.medium.com/v1/me", {
-          headers: { Authorization: `Bearer ${site.password}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         });
         if (!r.ok) {
           const err = await r.text();
