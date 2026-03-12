@@ -190,7 +190,11 @@ export async function registerRoutes(
 
   app.post(api.scheduledPosts.create.path, async (req, res) => {
     try {
-      const input = api.scheduledPosts.create.input.parse(req.body);
+      const body = {
+        ...req.body,
+        scheduledAt: req.body.scheduledAt ? new Date(req.body.scheduledAt) : undefined,
+      };
+      const input = api.scheduledPosts.create.input.parse(body);
       const post = await storage.createScheduledPost(input);
       res.status(201).json(post);
     } catch (err) {
