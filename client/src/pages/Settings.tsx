@@ -346,18 +346,36 @@ export default function Settings() {
                             Get Snippet
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
+                        <DialogContent className="max-w-2xl bg-slate-50 dark:bg-slate-900 border-none shadow-2xl">
                           <DialogHeader>
-                            <DialogTitle>Embed Widget Snippet</DialogTitle>
+                            <DialogTitle className="text-2xl font-display font-black text-slate-900 dark:text-slate-50">Embed Widget Snippet</DialogTitle>
                           </DialogHeader>
-                          <div className="space-y-4">
-                            <p className="text-sm text-muted-foreground">
-                              Copy and paste this code into your external website's HTML where you want the feed to appear. 
-                              <strong> Note:</strong> This will only work on <code>{site.siteUrl}</code>.
-                            </p>
-                            <div className="relative group">
-                              <pre className="bg-slate-950 text-slate-50 p-6 rounded-xl overflow-x-auto font-mono text-sm leading-relaxed border border-white/10 shadow-2xl">
-                                {`<div id="autoblog-feed" class="autoblog-feed-container"></div>
+                          <div className="space-y-6 py-4">
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-xl flex items-start gap-3">
+                              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-800/50 flex items-center justify-center shrink-0">
+                                <LinkIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <p className="text-sm text-blue-800/80 dark:text-blue-300 leading-relaxed">
+                                Copy and paste this code into your external website's HTML where you want the feed to appear.
+                                <br />
+                                <span className="font-bold">Important:</span> This will only work on <code className="bg-blue-100 dark:bg-blue-800/50 px-1.5 py-0.5 rounded text-blue-900 dark:text-blue-200">{site.siteUrl}</code>.
+                              </p>
+                            </div>
+
+                            <div className="relative group rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-lg">
+                              <div className="bg-slate-100 dark:bg-slate-800/50 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                <div className="flex gap-1.5">
+                                  <div className="w-3 h-3 rounded-full bg-red-400/80" />
+                                  <div className="w-3 h-3 rounded-full bg-amber-400/80" />
+                                  <div className="w-3 h-3 rounded-full bg-emerald-400/80" />
+                                </div>
+                                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest font-bold">HTML Snippet</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 text-xs font-bold text-primary hover:bg-primary/10 transition-all gap-2"
+                                  onClick={() => {
+                                    const code = `<div id="autoblog-feed" class="autoblog-feed-container"></div>
 <script>
   fetch('${window.location.origin}/api/v1/feed/${site.clientId}')
     .then(res => res.json())
@@ -365,43 +383,44 @@ export default function Settings() {
       const container = document.getElementById('autoblog-feed');
       blogs.forEach(blog => {
         container.innerHTML += \`
-          <article class="autoblog-post">
+          <article class="autoblog-post" style="margin-bottom: 2rem;">
+            <h2 class="autoblog-title" style="margin-bottom: 0.5rem; font-size: 1.5rem;">\${blog.title}</h2>
+            \${blog.imageUrl ? \`<img class="autoblog-thumbnail" src="\${blog.imageUrl}" alt="\${blog.title}" style="width: 100%; border-radius: 8px; margin-bottom: 1rem;" loading="lazy" />\` : ''}
+            <div class="autoblog-content" style="line-height: 1.6;">\${blog.content}</div>
+          </article>
+          <hr class="autoblog-divider" style="border: 0; border-top: 1px solid #eee; margin: 2rem 0;" />\`;
+      });
+    }).catch(err => console.error("AutoBlog Widget Error:", err));
+</script>`;
+                                    navigator.clipboard.writeText(code);
+                                    toast({ title: "Copied!", description: "Snippet copied to clipboard" });
+                                  }}
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  Copy Code
+                                </Button>
+                              </div>
+                              <div className="bg-[#0d1117] p-6 overflow-x-auto">
+                                <pre className="font-mono text-xs md:text-sm leading-relaxed text-slate-300 whitespace-pre">
+{`<div id="autoblog-feed" class="autoblog-feed-container"></div>
+<script>
+  fetch('${window.location.origin}/api/v1/feed/${site.clientId}')
+    .then(res => res.json())
+    .then(blogs => {
+      const container = document.getElementById('autoblog-feed');
+      blogs.forEach(blog => {
+        container.innerHTML += \`
+          <article class="autoblog-post" style="margin-bottom: 2rem;">
             <h2 class="autoblog-title">\${blog.title}</h2>
-            \${blog.imageUrl ? \`<img class="autoblog-thumbnail" src="\${blog.imageUrl}" alt="\${blog.title}" loading="lazy" />\` : ''}
+            \${blog.imageUrl ? \`<img class="autoblog-thumbnail" src="\${blog.imageUrl}" ... />\` : ''}
             <div class="autoblog-content">\${blog.content}</div>
           </article>
           <hr class="autoblog-divider" />\`;
       });
     }).catch(err => console.error("AutoBlog Widget Error:", err));
 </script>`}
-                              </pre>
-                              <Button 
-                                size="sm" 
-                                className="absolute top-4 right-4 h-8 text-[10px] uppercase font-bold tracking-wider"
-                                onClick={() => {
-                                  const code = `<div id="autoblog-feed" class="autoblog-feed-container"></div>
-<script>
-  fetch('${window.location.origin}/api/v1/feed/${site.clientId}')
-    .then(res => res.json())
-    .then(blogs => {
-      const container = document.getElementById('autoblog-feed');
-      blogs.forEach(blog => {
-        container.innerHTML += \`
-          <article class="autoblog-post">
-            <h2 class="autoblog-title">\${blog.title}</h2>
-            \${blog.imageUrl ? \`<img class="autoblog-thumbnail" src="\${blog.imageUrl}" alt="\${blog.title}" loading="lazy" />\` : ''}
-            <div class="autoblog-content">\${blog.content}</div>
-          </article>
-          <hr class="autoblog-divider" />\`;
-      });
-    }).catch(err => console.error("AutoBlog Widget Error:", err));
-</script>`;
-                                  navigator.clipboard.writeText(code);
-                                  toast({ title: "Copied!", description: "Snippet copied to clipboard" });
-                                }}
-                              >
-                                Copy Code
-                              </Button>
+                                </pre>
+                              </div>
                             </div>
                           </div>
                         </DialogContent>
