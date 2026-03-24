@@ -4,16 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { Loader } from "@/components/Loader";
 
 export default function BlogList() {
   const { data: blogs, isLoading } = useBlogs();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <Loader />;
   }
 
   const sortedBlogs = blogs 
@@ -21,18 +18,23 @@ export default function BlogList() {
     : [];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-foreground">All Blogs</h1>
-          <p className="text-muted-foreground mt-1">Manage, edit, and publish your generated content.</p>
+    <div className="space-y-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 p-8 bg-primary/5 rounded-3xl border border-primary/10 relative overflow-hidden">
+        <div className="relative z-10">
+          <h1 className="text-6xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400 tracking-tight pb-2">All Blogs</h1>
+          <p className="text-muted-foreground mt-4 text-lg font-medium max-w-md">Manage, edit, and publish your AI-generated content with ease.</p>
         </div>
-        <Button size="lg" className="rounded-xl shadow-lg shadow-primary/20" asChild>
-          <Link href="/generate">
-            <Plus className="w-5 h-5 mr-2" />
-            Generate New
-          </Link>
-        </Button>
+        <div className="flex items-center gap-3 relative z-10">
+          <Button size="lg" className="rounded-2xl shadow-2xl shadow-primary/30 h-14 px-8 font-bold text-base bg-gradient-to-r from-primary to-blue-600 hover:opacity-90 transition-opacity" asChild>
+            <Link href="/generate">
+              <Plus className="w-5 h-5 mr-2" />
+              Generate New
+            </Link>
+          </Button>
+        </div>
+        
+        {/* Decorative background element */}
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
       </div>
 
       {sortedBlogs.length === 0 ? (

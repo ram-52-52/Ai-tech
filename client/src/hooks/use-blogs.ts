@@ -68,8 +68,9 @@ export function useUpdateBlog() {
       if (!res.ok) throw new Error("Failed to update blog");
       return api.blogs.update.responses[200].parse(await res.json());
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: [api.blogs.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.blogs.get.path, variables.id] });
     },
   });
 }

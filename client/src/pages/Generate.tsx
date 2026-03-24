@@ -56,7 +56,7 @@ export default function Generate() {
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary to-purple-500 mx-auto flex items-center justify-center shadow-lg shadow-primary/20 mb-6">
           <Sparkles className="w-8 h-8 text-white" />
         </div>
-        <h1 className="text-4xl font-display font-bold text-foreground mb-4">
+        <h1 className="text-6xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400 tracking-tight mb-6 pb-2 text-glow">
           AI Content Generator
         </h1>
         <p className="text-lg text-muted-foreground max-w-xl mx-auto">
@@ -68,7 +68,7 @@ export default function Generate() {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.1 }}
-        className="dashboard-card p-8 md:p-10"
+        className="glass-panel p-8 md:p-10 rounded-2xl relative overflow-hidden"
       >
         <form onSubmit={handleGenerate} className="space-y-8">
           <div className="space-y-4">
@@ -79,7 +79,7 @@ export default function Generate() {
                 placeholder="e.g. The Future of Sustainable Architecture in 2025"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                className="pl-4 pr-4 py-6 text-lg rounded-xl shadow-sm border-2 focus-visible:ring-0 focus-visible:border-primary transition-all"
+                className="pl-4 pr-12 py-6 text-lg rounded-xl shadow-inner border-white/40 dark:border-white/10 bg-white/50 dark:bg-black/20 focus-visible:ring-primary focus-visible:ring-2 transition-all"
                 disabled={isPending}
               />
               <div className="absolute right-3 top-3">
@@ -96,7 +96,7 @@ export default function Generate() {
           <Button 
             type="submit" 
             size="lg" 
-            className="w-full h-14 text-lg font-semibold rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all"
+            className="w-full h-14 text-lg font-bold rounded-2xl shadow-2xl shadow-primary/30 bg-gradient-to-r from-primary to-blue-600 hover:opacity-90 transition-all text-white hover:-translate-y-0.5"
             disabled={isPending || !topic.trim()}
           >
             {isPending ? (

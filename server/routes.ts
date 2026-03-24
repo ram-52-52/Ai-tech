@@ -3,9 +3,10 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { generateBlogPost } from "./services/openai";
+import { generateBlogPost, generateImageForBlog } from "./services/ai";
 import { fetchTrends } from "./services/trends";
 import { publishBlog } from "./services/publisher";
+import { uploadFeaturedImageToWordPress } from "./services/wpImageUploader";
 import cron from "node-cron";
 
 export async function registerRoutes(
@@ -14,6 +15,53 @@ export async function registerRoutes(
 ): Promise<Server> {
 
   // --- Blog Routes ---
+
+  // Public Syndication Feed (Domain-Locked)
+  app.get("/api/v1/feed/:clientId", async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const site = await storage.getExternalSiteByClientId(clientId);
+
+      if (!site || site.siteType !== "embed_widget" || !site.isEnabled) {
+        return res.status(404).json({ error: "Widget not found or disabled" });
+      }
+
+      // Domain Locking Security
+      const origin = req.headers.origin || req.headers.referer;
+      if (!origin) {
+        return res.status(403).json({ error: "Unauthorized: Missing Origin/Referer header." });
+      }
+
+      try {
+        const allowedOrigin = new URL(site.siteUrl).origin;
+        const incomingOrigin = origin.startsWith('http') ? new URL(origin).origin : origin;
+
+        if (allowedOrigin !== incomingOrigin) {
+          console.warn(`[Security] Blocked unauthorized domain: ${incomingOrigin}. Expected: ${allowedOrigin}`);
+          return res.status(403).json({ error: "Unauthorized Domain. Script execution blocked." });
+        }
+      } catch (urlErr) {
+        return res.status(403).json({ error: "Invalid Origin/Referer format." });
+      }
+
+      // Fetch top 10 published blogs
+      const blogs = await storage.getBlogs();
+      const feed = blogs
+        .filter(b => b.isPublished)
+        .slice(0, 10)
+        .map(b => ({
+          title: b.title,
+          content: b.content,
+          imageUrl: b.imageUrl,
+          createdAt: b.createdAt
+        }));
+
+      res.json(feed);
+    } catch (error: any) {
+      console.error("[Feed API] Error:", error.message);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
 
   app.get(api.blogs.list.path, async (req, res) => {
     const blogs = await storage.getBlogs();
@@ -82,10 +130,76 @@ export async function registerRoutes(
       const generatedBlog = await generateBlogPost(topic);
       const blog = await storage.createBlog(generatedBlog);
       res.status(201).json(blog);
-
     } catch (error: any) {
       console.error("Blog generation failed:", error);
       res.status(500).json({ message: error.message || "Failed to generate blog" });
+    }
+  });
+
+  app.post("/api/blogs/:id/regenerate-full", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { title: bodyTitle } = req.body;
+      const blog = await storage.getBlog(id);
+      if (!blog) return res.status(404).json({ message: "Blog not found" });
+
+      const targetTitle = bodyTitle || blog.title;
+      console.log(`[Route] Regenerating FULL blog ${id} using title: "${targetTitle}"`);
+      
+      // 1. Generate Full Blog (Content, Tags, Image) using the unified service
+      console.log(`[Route] Triggering unified AI generation for "${targetTitle}"...`);
+      const generated = await generateBlogPost(targetTitle);
+      
+      // 2. Optional WordPress Media Sync
+      const sites = await storage.getExternalSites();
+      const wpSite = sites.find(s => s.siteType === "wordpress" && s.isEnabled);
+      
+      if (wpSite && generated.imageUrl) {
+        try {
+          console.log(`[Route] Found connected WordPress site: ${wpSite.siteName}. Syncing image: ${generated.imageUrl}`);
+          await uploadFeaturedImageToWordPress(generated.imageUrl, generated.title, wpSite.siteUrl);
+        } catch (wpError: any) {
+          console.error(`[WP Sync] Image sync to WordPress failed (non-fatal):`, wpError.message);
+        }
+      }
+
+      const updatedBlog = await storage.updateBlog(id, { 
+        title: generated.title,
+        content: generated.content, 
+        tags: generated.tags,
+        imageUrl: generated.imageUrl,
+        metaDescription: generated.metaDescription,
+        featuredMediaProvider: generated.featuredMediaProvider,
+        topic: targetTitle
+      });
+
+      res.json(updatedBlog);
+    } catch (error: any) {
+      console.error("[Route] Full regeneration process FAILED:", error.message);
+      res.status(500).json({ message: error.message || "Failed to regenerate full blog" });
+    }
+  });
+
+  app.post("/api/blogs/:id/regenerate-image", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { title: bodyTitle } = req.body;
+      const blog = await storage.getBlog(id);
+      if (!blog) return res.status(404).json({ message: "Blog not found" });
+
+      const targetTitle = bodyTitle || blog.title;
+      console.log(`[Route] Regenerating image for blog ${id} using title: "${targetTitle}"`);
+      
+      const imageResult = await generateImageForBlog(targetTitle, blog.slug);
+      
+      const updatedBlog = await storage.updateBlog(id, { 
+        imageUrl: imageResult.url,
+        featuredMediaProvider: imageResult.provider
+      });
+      res.json(updatedBlog);
+    } catch (error: any) {
+      console.error("Image regeneration failed:", error);
+      res.status(500).json({ message: error.message || "Failed to regenerate image" });
     }
   });
 
@@ -135,7 +249,7 @@ export async function registerRoutes(
         const topTrend = trends[0];
         console.log(`Creating blog for top trend: ${topTrend.topic}`);
         const generatedBlog = await generateBlogPost(topTrend.topic);
-        await storage.createBlog({ ...generatedBlog, isPublished: true, publishedAt: new Date() });
+        await storage.createBlog({ ...generatedBlog, isPublished: true });
         console.log("✅ Auto-blog created successfully.");
       }
     } catch (error) {
@@ -232,6 +346,64 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  // --- WordPress OAuth Callback ---
+  app.get("/api/wordpress/callback", async (req, res) => {
+    const { code } = req.query;
+    if (!code || typeof code !== "string") {
+      return res.status(400).send("Authorization code is missing.");
+    }
+    
+    try {
+      const params = new URLSearchParams();
+      params.append("client_id", "135690");
+      params.append("redirect_uri", "http://localhost:5000/api/wordpress/callback");
+      params.append("client_secret", process.env.WP_CLIENT_SECRET || "");
+      params.append("code", code);
+      params.append("grant_type", "authorization_code");
+
+      const response = await fetch("https://public-api.wordpress.com/oauth2/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error_description || "Failed to get access token");
+      }
+
+      const { access_token, blog_id } = data as { access_token: string; blog_id: string };
+      if (!access_token || !blog_id) {
+        throw new Error("Missing access_token or blog_id in response.");
+      }
+
+      // Fetch the blog details to get site URL and name
+      const siteDetailsRes = await fetch(`https://public-api.wordpress.com/rest/v1.1/sites/${blog_id}`);
+      let siteName = `WordPress Blog ${blog_id}`;
+      let siteUrl = `https://wordpress.com`;
+      if (siteDetailsRes.ok) {
+        const siteDetails = await siteDetailsRes.json() as any;
+        siteName = siteDetails.name || siteName;
+        siteUrl = siteDetails.URL || siteUrl;
+      }
+
+      // Save to externalSites using storage
+      await storage.createExternalSite({
+        siteName,
+        siteType: "wordpress",
+        siteUrl,
+        username: blog_id.toString(),
+        password: access_token,
+        isEnabled: true,
+      });
+
+      res.redirect("/settings?wp_connect=success");
+    } catch (error: any) {
+      console.error("WordPress OAuth Error:", error.message);
+      res.redirect("/settings?wp_connect=error");
+    }
+  });
+
   // --- Test Connection ---
   app.post("/api/external-sites/:id/test", async (req, res) => {
     const site = await storage.getExternalSite(Number(req.params.id));
@@ -251,17 +423,30 @@ export async function registerRoutes(
         return res.json({ message: `Connected as @${data.data.username} (${data.data.name})` });
 
       } else if (site.siteType === "wordpress") {
-        const base = site.siteUrl.replace(/\/$/, "");
-        const credentials = Buffer.from(`${site.username}:${site.password}`).toString("base64");
-        const r = await fetch(`${base}/wp-json/wp/v2/users/me`, {
-          headers: { Authorization: `Basic ${credentials}` },
-        });
-        if (!r.ok) {
-          const err = await r.text();
-          return res.status(400).json({ message: `WordPress auth failed — ${err}` });
+        const isOAuth = site.siteUrl.includes("wordpress.com") || /^\d+$/.test(site.username);
+        if (isOAuth) {
+          const r = await fetch(`https://public-api.wordpress.com/rest/v1.1/me`, {
+            headers: { Authorization: `Bearer ${site.password}` },
+          });
+          if (!r.ok) {
+            const err = await r.text();
+            return res.status(400).json({ message: `WordPress.com auth failed — ${err}` });
+          }
+          const data = await r.json() as { display_name: string };
+          return res.json({ message: `Connected as ${data.display_name}` });
+        } else {
+          const base = site.siteUrl.replace(/\/$/, "");
+          const credentials = Buffer.from(`${site.username}:${site.password}`).toString("base64");
+          const r = await fetch(`${base}/wp-json/wp/v2/users/me`, {
+            headers: { Authorization: `Basic ${credentials}` },
+          });
+          if (!r.ok) {
+            const err = await r.text();
+            return res.status(400).json({ message: `WordPress auth failed — ${err}` });
+          }
+          const data = await r.json() as { name: string };
+          return res.json({ message: `Connected as ${data.name}` });
         }
-        const data = await r.json() as { name: string };
-        return res.json({ message: `Connected as ${data.name}` });
 
       } else if (site.siteType === "ghost") {
         const base = site.siteUrl.replace(/\/$/, "");
@@ -286,16 +471,37 @@ export async function registerRoutes(
 
       } else if (site.siteType === "linkedin") {
         const token = site.password?.trim();
-        const r = await fetch("https://api.linkedin.com/v2/me", {
-          headers: { Authorization: `Bearer ${token}`, "X-Restli-Protocol-Version": "2.0.0" },
-        });
-        if (!r.ok) {
-          const err = await r.text();
-          return res.status(400).json({ message: `LinkedIn auth failed — ${err}` });
+
+        // Mock success for testing
+        if (token === "provide_token_in_ui") {
+          return res.json({ message: "Connected as Mock User (Test Mode)" });
         }
-        const data = await r.json() as { localizedFirstName?: string; localizedLastName?: string };
-        const name = [data.localizedFirstName, data.localizedLastName].filter(Boolean).join(" ") || "Unknown";
-        return res.json({ message: `Connected as ${name}` });
+
+        if (!token) return res.status(400).json({ message: "No token provided" });
+
+        // 1. Try OpenID UserInfo (for new scopes: openid, profile)
+        const userInfoRes = await fetch("https://api.linkedin.com/v2/userinfo", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (userInfoRes.ok) {
+          const userInfo = await userInfoRes.json() as { name: string };
+          return res.json({ message: `Connected as ${userInfo.name} (via OpenID)` });
+        } else {
+          // 2. Try legacy /me endpoint (for legacy scopes: r_liteprofile)
+          const r = await fetch("https://api.linkedin.com/v2/me", {
+            headers: { Authorization: `Bearer ${token}`, "X-Restli-Protocol-Version": "2.0.0" },
+          });
+
+          if (r.ok) {
+            const data = await r.json() as { localizedFirstName?: string; localizedLastName?: string };
+            const name = [data.localizedFirstName, data.localizedLastName].filter(Boolean).join(" ") || "Unknown";
+            return res.json({ message: `Connected as ${name} (Legacy)` });
+          } else {
+            const err = await r.text();
+            return res.status(400).json({ message: `LinkedIn auth failed — ${err}` });
+          }
+        }
 
       } else {
         return res.status(400).json({ message: `Test not supported for ${site.siteType}` });

@@ -6,10 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Calendar, Link as LinkIcon, CheckCircle2, Clock, Plug, Pencil, X } from "lucide-react";
+import { Plus, Trash2, Calendar, Link as LinkIcon, CheckCircle2, Clock, Plug, Pencil, X, AlertTriangle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { motion } from "framer-motion";
+import { Loader } from "@/components/Loader";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
 
 export default function Settings() {
   const { data: sites, isLoading: sitesLoading } = useSites();
@@ -52,7 +68,8 @@ export default function Settings() {
   const testConnection = async (siteId: number) => {
     setTestingSiteId(siteId);
     try {
-      const data = await apiRequest("POST", `/api/external-sites/${siteId}/test`) as { message: string };
+      const res = await apiRequest("POST", `/api/external-sites/${siteId}/test`);
+      const data = await res.json() as { message: string };
       toast({ title: "Connection Successful", description: data.message });
     } catch (err: any) {
       const msg = err?.message ?? "Connection failed";
@@ -78,8 +95,9 @@ export default function Settings() {
   });
 
   const handleAddSite = () => {
-    if (!siteForm.siteName || !siteForm.siteUrl || !siteForm.username || !siteForm.password) {
-      toast({ title: "Error", description: "Please fill in all fields", variant: "destructive" });
+    const isEmbed = siteForm.siteType === "embed_widget";
+    if (!siteForm.siteName || !siteForm.siteUrl || (!isEmbed && (!siteForm.username || !siteForm.password))) {
+      toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
       return;
     }
 
@@ -88,8 +106,8 @@ export default function Settings() {
         siteName: siteForm.siteName,
         siteType: siteForm.siteType,
         siteUrl: siteForm.siteUrl,
-        username: siteForm.username,
-        password: siteForm.password,
+        username: isEmbed ? "n/a" : siteForm.username,
+        password: isEmbed ? "n/a" : siteForm.password,
         isEnabled: siteForm.isEnabled,
       },
       {
@@ -129,14 +147,19 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-display font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage external sites and schedule blog posts</p>
-      </div>
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-8"
+    >
+      <motion.div variants={itemVariants}>
+        <h1 className="text-5xl md:text-6xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400 tracking-tight pb-2">Settings</h1>
+        <p className="text-muted-foreground mt-2 text-lg font-medium">Manage external sites and schedule blog posts</p>
+      </motion.div>
 
       {/* External Sites Section */}
-      <div className="bg-card rounded-2xl border border-border/50 p-8 shadow-sm space-y-6">
+      <motion.div variants={itemVariants} className="glass-panel rounded-2xl p-8 space-y-6">
         <div className="border-b border-border/50 pb-4">
           <h2 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
             <LinkIcon className="w-6 h-6 text-primary" />
@@ -153,13 +176,14 @@ export default function Settings() {
               placeholder="My WordPress Blog"
               value={siteForm.siteName}
               onChange={(e) => setSiteForm({ ...siteForm, siteName: e.target.value })}
+              className="bg-white/50 dark:bg-black/20 border-white/40 dark:border-white/10 shadow-inner focus-visible:ring-primary h-12 rounded-xl text-base transition-all"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="siteType">Site Type</Label>
             <Select value={siteForm.siteType} onValueChange={(val) => setSiteForm({ ...siteForm, siteType: val })}>
-              <SelectTrigger id="siteType">
+              <SelectTrigger id="siteType" className="bg-white/50 dark:bg-black/20 border-white/40 dark:border-white/10 shadow-inner h-12 rounded-xl text-base focus:ring-primary transition-all">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -167,62 +191,96 @@ export default function Settings() {
                 <SelectItem value="medium">Medium</SelectItem>
                 <SelectItem value="linkedin">LinkedIn</SelectItem>
                 <SelectItem value="ghost">Ghost</SelectItem>
+                <SelectItem value="embed_widget">Embed Widget (External Feed)</SelectItem>
                 <SelectItem value="custom">Custom API</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="siteUrl">Website URL</Label>
-            <Input
-              id="siteUrl"
-              placeholder="https://myblog.com"
-              value={siteForm.siteUrl}
-              onChange={(e) => setSiteForm({ ...siteForm, siteUrl: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="username">Username / Email</Label>
-            <Input
-              id="username"
-              placeholder="admin@example.com"
-              value={siteForm.username}
-              onChange={(e) => setSiteForm({ ...siteForm, username: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password / API Key</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={siteForm.password}
-              onChange={(e) => setSiteForm({ ...siteForm, password: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2 flex items-end">
-            <div className="flex items-center gap-3 w-full">
-              <Switch
-                checked={siteForm.isEnabled}
-                onCheckedChange={(checked) => setSiteForm({ ...siteForm, isEnabled: checked })}
-              />
-              <Label className="text-sm cursor-pointer">Enabled</Label>
+          {siteForm.siteType === "wordpress" ? (
+            <div className="col-span-1 md:col-span-2 relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/40 dark:to-blue-900/10 border border-blue-200/60 dark:border-blue-800/50 rounded-2xl p-8 text-center space-y-5 shadow-inner">
+              <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-400/20 rounded-full blur-3xl pointer-events-none" />
+              <h3 className="text-xl font-bold font-display text-blue-900 dark:text-blue-100">Connect Your WordPress.com Blog</h3>
+              <p className="text-sm font-medium text-blue-800/80 dark:text-blue-300">
+                Authorize AutoBlog.ai to automatically publish posts to your free WordPress.com site.
+              </p>
+              <Button
+                onClick={() => {
+                  const WP_CLIENT_ID = "135690";
+                  const WP_REDIRECT_URI = "http://localhost:5000/api/wordpress/callback";
+                  const authUrl = `https://public-api.wordpress.com/oauth2/authorize?client_id=${WP_CLIENT_ID}&redirect_uri=${encodeURIComponent(WP_REDIRECT_URI)}&response_type=code`;
+                  window.location.href = authUrl;
+                }}
+                className="bg-gradient-to-r from-[#0087be] to-[#005a80] hover:shadow-[0_0_20px_rgba(0,135,190,0.4)] transition-all text-white px-8 py-6 rounded-xl font-semibold text-base flex items-center justify-center gap-3 mx-auto shadow-lg hover:-translate-y-0.5"
+              >
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.158 12.786l-2.698 7.84c.806.236 1.657.365 2.54.365 1.047 0 2.05-.18 2.986-.51-.024-.037-.046-.078-.065-.123l-2.763-8.082V12.786M4.545 15.698c0-1.875.568-3.078 1.137-4.102.568-.91.966-1.536.966-2.5 0-1.138-.853-2.162-2.046-2.162h-.057A9.855 9.855 0 0 0 2.05 12c0 2.628 1.026 5.016 2.69 6.786l2.083-6.046c-.225-.453-.45-.984-.45-1.54M17.02 10.648c0 1.48-.342 2.787-.796 3.98l-3.23 9.096A9.97 9.97 0 0 0 21.95 12c0-4.11-2.484-7.644-6.096-9.15.568 1.08.91 2.33.91 3.58.002.855-.17 1.706-.512 2.484.455.454.767 1.08.767 1.734m-4.862-8.52A9.957 9.957 0 0 0 12 2C6.48 2 2 6.48 2 12c0 .285.013.565.035.845.82-.46 2.088-1.597 2.088-1.597.23-.17.172-.51-.113-.51h-.967c1.196-4.557 5.35-7.97 10.32-7.97 1.63 0 3.176.388 4.544 1.077l-1.65 4.383-4.1-3.628z"/>
+                </svg>
+                Connect with WordPress
+              </Button>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="siteUrl">{siteForm.siteType === "embed_widget" ? "Allowed Domain URL" : "Website URL"}</Label>
+                <Input
+                  id="siteUrl"
+                  placeholder={siteForm.siteType === "embed_widget" ? "https://my-friend-site.com" : "https://myblog.com"}
+                  value={siteForm.siteUrl}
+                  onChange={(e) => setSiteForm({ ...siteForm, siteUrl: e.target.value })}
+                  className="bg-white/50 dark:bg-black/20 border-white/40 dark:border-white/10 shadow-inner focus-visible:ring-primary h-12 rounded-xl text-base transition-all"
+                />
+              </div>
+
+              {siteForm.siteType !== "embed_widget" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Username / Email</Label>
+                    <Input
+                      id="username"
+                      placeholder="admin@example.com"
+                      value={siteForm.username}
+                      onChange={(e) => setSiteForm({ ...siteForm, username: e.target.value })}
+                      className="bg-white/50 dark:bg-black/20 border-white/40 dark:border-white/10 shadow-inner focus-visible:ring-primary h-12 rounded-xl text-base transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password / API Key</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={siteForm.password}
+                      onChange={(e) => setSiteForm({ ...siteForm, password: e.target.value })}
+                      className="bg-white/50 dark:bg-black/20 border-white/40 dark:border-white/10 shadow-inner focus-visible:ring-primary h-12 rounded-xl text-base transition-all"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-2 flex items-end">
+                <div className="flex items-center gap-3 w-full pb-2">
+                  <Switch
+                    checked={siteForm.isEnabled}
+                    onCheckedChange={(checked) => setSiteForm({ ...siteForm, isEnabled: checked })}
+                  />
+                  <Label className="text-sm cursor-pointer">Enabled</Label>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        <Button onClick={handleAddSite} disabled={isCreatingSite} className="w-full shadow-lg shadow-primary/20">
-          <Plus className="w-4 h-4 mr-2" />
-          {isCreatingSite ? "Adding..." : "Add Site"}
-        </Button>
+        {siteForm.siteType !== "wordpress" && (
+          <Button onClick={handleAddSite} disabled={isCreatingSite} className="w-full shadow-2xl shadow-primary/30 bg-gradient-to-r from-primary to-blue-600 hover:opacity-90 transition-opacity h-14 rounded-2xl text-lg font-bold text-white hover:-translate-y-0.5">
+            <Plus className="w-5 h-5 mr-3" />
+            {isCreatingSite ? "Adding..." : "Add Site"}
+          </Button>
+        )}
 
         {sitesLoading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto" />
-          </div>
+          <Loader className="min-h-[200px]" />
         ) : sites && sites.length > 0 ? (
           <div className="space-y-3 pt-4">
             {sites.map((site) => (
@@ -234,6 +292,15 @@ export default function Settings() {
                       <span className="truncate max-w-[180px]">{site.siteUrl}</span>
                       <span>•</span>
                       <span className="uppercase font-medium">{site.siteType}</span>
+                      {site.password === "provide_token_in_ui" && (
+                        <>
+                          <span>•</span>
+                          <span className="bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-amber-200/50 flex items-center gap-1">
+                            <Plug className="w-2.5 h-2.5" />
+                            DEMO MODE
+                          </span>
+                        </>
+                      )}
                       {site.isEnabled ? (
                         <>
                           <span>•</span>
@@ -266,6 +333,79 @@ export default function Settings() {
                         <Plug className="w-3.5 h-3.5" />
                         {testingSiteId === site.id ? "Testing..." : "Test"}
                       </Button>
+                    )}
+                    {site.siteType === "embed_widget" && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-primary hover:text-primary hover:bg-primary/10 gap-1.5"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Get Snippet
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>Embed Widget Snippet</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <p className="text-sm text-muted-foreground">
+                              Copy and paste this code into your external website's HTML where you want the feed to appear. 
+                              <strong> Note:</strong> This will only work on <code>{site.siteUrl}</code>.
+                            </p>
+                            <div className="relative group">
+                              <pre className="bg-slate-950 text-slate-50 p-6 rounded-xl overflow-x-auto font-mono text-sm leading-relaxed border border-white/10 shadow-2xl">
+                                {`<div id="autoblog-feed" class="autoblog-feed-container"></div>
+<script>
+  fetch('${window.location.origin}/api/v1/feed/${site.clientId}')
+    .then(res => res.json())
+    .then(blogs => {
+      const container = document.getElementById('autoblog-feed');
+      blogs.forEach(blog => {
+        container.innerHTML += \`
+          <article class="autoblog-post">
+            <h2 class="autoblog-title">\${blog.title}</h2>
+            \${blog.imageUrl ? \`<img class="autoblog-thumbnail" src="\${blog.imageUrl}" alt="\${blog.title}" loading="lazy" />\` : ''}
+            <div class="autoblog-content">\${blog.content}</div>
+          </article>
+          <hr class="autoblog-divider" />\`;
+      });
+    }).catch(err => console.error("AutoBlog Widget Error:", err));
+</script>`}
+                              </pre>
+                              <Button 
+                                size="sm" 
+                                className="absolute top-4 right-4 h-8 text-[10px] uppercase font-bold tracking-wider"
+                                onClick={() => {
+                                  const code = `<div id="autoblog-feed" class="autoblog-feed-container"></div>
+<script>
+  fetch('${window.location.origin}/api/v1/feed/${site.clientId}')
+    .then(res => res.json())
+    .then(blogs => {
+      const container = document.getElementById('autoblog-feed');
+      blogs.forEach(blog => {
+        container.innerHTML += \`
+          <article class="autoblog-post">
+            <h2 class="autoblog-title">\${blog.title}</h2>
+            \${blog.imageUrl ? \`<img class="autoblog-thumbnail" src="\${blog.imageUrl}" alt="\${blog.title}" loading="lazy" />\` : ''}
+            <div class="autoblog-content">\${blog.content}</div>
+          </article>
+          <hr class="autoblog-divider" />\`;
+      });
+    }).catch(err => console.error("AutoBlog Widget Error:", err));
+</script>`;
+                                  navigator.clipboard.writeText(code);
+                                  toast({ title: "Copied!", description: "Snippet copied to clipboard" });
+                                }}
+                              >
+                                Copy Code
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     )}
                     <Button
                       variant="ghost"
@@ -342,10 +482,10 @@ export default function Settings() {
             <p>No sites configured yet. Add one to get started!</p>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Schedule Posts Section */}
-      <div className="bg-card rounded-2xl border border-border/50 p-8 shadow-sm space-y-6">
+      <motion.div variants={itemVariants} className="glass-panel rounded-2xl p-8 space-y-6">
         <div className="border-b border-border/50 pb-4">
           <h2 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
             <Calendar className="w-6 h-6 text-primary" />
@@ -407,16 +547,14 @@ export default function Settings() {
         )}
 
         {sites && sites.length > 0 && (
-          <Button onClick={handleSchedulePost} disabled={isCreatingScheduled} className="w-full shadow-lg shadow-primary/20">
-            <Calendar className="w-4 h-4 mr-2" />
+          <Button onClick={handleSchedulePost} disabled={isCreatingScheduled} className="w-full shadow-2xl shadow-primary/30 bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 transition-opacity h-14 rounded-2xl text-lg font-bold text-white hover:-translate-y-0.5">
+            <Calendar className="w-5 h-5 mr-3" />
             {isCreatingScheduled ? "Scheduling..." : "Schedule Post"}
           </Button>
         )}
 
         {scheduledLoading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto" />
-          </div>
+          <Loader className="min-h-[200px]" />
         ) : scheduled && scheduled.length > 0 ? (
           <div className="space-y-3 pt-4">
             {scheduled.map((post) => {
@@ -437,7 +575,29 @@ export default function Settings() {
                       </span>
                     </div>
                     {post.status === "failed" && (post as any).errorMessage && (
-                      <p className="text-xs text-destructive/80 mt-1">{(post as any).errorMessage}</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <p className="text-xs text-destructive/80 line-clamp-1 max-w-[200px] md:max-w-[400px]">
+                          {(post as any).errorMessage}
+                        </p>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 py-0 border-destructive/30 text-destructive hover:bg-destructive hover:text-white shrink-0">
+                              View Error
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle className="text-destructive flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5" />
+                                Publishing Failed
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div className="bg-destructive/10 p-4 rounded-md border border-destructive/20 text-xs font-mono whitespace-pre-wrap break-all text-destructive">
+                              {(post as any).errorMessage}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                     )}
                   </div>
                   <Button
@@ -445,7 +605,7 @@ export default function Settings() {
                     size="icon"
                     onClick={() => deleteScheduled(post.id)}
                     disabled={isDeletingScheduled}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -458,7 +618,7 @@ export default function Settings() {
             <p>No scheduled posts yet.</p>
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

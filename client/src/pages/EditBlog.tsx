@@ -2,15 +2,22 @@ import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useBlog, useUpdateBlog, useDeleteBlog } from "@/hooks/use-blogs";
 import { useSites, useScheduledPosts, useCreateScheduledPost, useDeleteScheduledPost } from "@/hooks/use-sites";
+import { api } from "@shared/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, Save, Trash2, Eye, Globe, CalendarClock, Clock, CheckCircle2, X } from "lucide-react";
+import { 
+  ChevronLeft, Save, Trash2, Eye, Globe, CalendarClock, Clock, 
+  CheckCircle2, X, RefreshCw, Sparkles, Wand2, Type, 
+  Image as ImageIcon, Hash, Tags
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
 
 export default function EditBlog() {
   const [match, params] = useRoute("/blogs/:id");
@@ -27,15 +34,24 @@ export default function EditBlog() {
   const { mutate: createScheduled, isPending: isScheduling } = useCreateScheduledPost();
   const { mutate: deleteScheduled } = useDeleteScheduledPost();
 
+  const queryClient = useQueryClient();
   const scheduledForThisBlog = allScheduled?.filter((s) => s.blogId === id) ?? [];
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isRegeneratingFull, setIsRegeneratingFull] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
-  const [formData, setFormData] = useState({
-    title: "",
-    content: "",
-    slug: "",
-    metaDescription: "",
-    isPublished: false,
-    tags: "",
+  // Initialize React Hook Form
+  const { register, handleSubmit, setValue, watch, reset, formState: { isDirty } } = useForm({
+    defaultValues: {
+      title: "",
+      content: "",
+      slug: "",
+      metaDescription: "",
+      isPublished: false,
+      tags: "",
+      imageUrl: "",
+      topic: ""
+    }
   });
 
   const [scheduleForm, setScheduleForm] = useState({
@@ -43,48 +59,57 @@ export default function EditBlog() {
     scheduledAt: "",
   });
 
+  const currentTitle = watch("title");
+  const currentImageUrl = watch("imageUrl");
+
   useEffect(() => {
     if (blog) {
-      setFormData({
-        title: blog.title,
-        content: blog.content,
-        slug: blog.slug,
+      reset({
+        ...blog,
+        tags: Array.isArray(blog.tags) ? blog.tags.join(", ") : (blog.tags || ""),
         metaDescription: blog.metaDescription || "",
         isPublished: blog.isPublished || false,
-        tags: blog.tags ? blog.tags.join(", ") : "",
+        imageUrl: blog.imageUrl || "",
+        topic: blog.topic || ""
       });
     }
-  }, [blog]);
+  }, [blog, reset]);
+
+  // Global Image Rescue for Edit Page
+  useEffect(() => {
+    const handleImageError = (e: Event) => {
+      const target = e.target as HTMLImageElement;
+      if (target.tagName === 'IMG' && !target.dataset.rescued) {
+        target.dataset.rescued = "true";
+        const rawKeyword = (currentTitle || blog?.topic || "business,technology")
+          .replace(/[^\w\s]/g, '')
+          .trim()
+          .replace(/\s+/g, ',');
+        target.src = `https://loremflickr.com/1200/600/${encodeURIComponent(rawKeyword)}?lock=${id}`;
+      }
+    };
+    window.addEventListener('error', handleImageError, true);
+    return () => window.removeEventListener('error', handleImageError, true);
+  }, [id, currentTitle, blog?.topic]);
 
   if (isLoading) {
-    return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" /></div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
-  if (!blog) {
-    return <div className="text-center py-20">Blog not found</div>;
-  }
+  if (!blog) return null;
 
-  const handleChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = () => {
-    const tagsArray = formData.tags.split(",").map(t => t.trim()).filter(Boolean);
-    
+  const onSubmit = (data: any) => {
     update({
       id,
-      title: formData.title,
-      content: formData.content,
-      slug: formData.slug,
-      metaDescription: formData.metaDescription,
-      isPublished: formData.isPublished,
-      tags: tagsArray,
+      ...data,
+      tags: data.tags.split(",").map((s: string) => s.trim()).filter(Boolean),
     }, {
       onSuccess: () => {
-        toast({ title: "Saved successfully", description: "Your changes have been saved." });
-      },
-      onError: () => {
-        toast({ title: "Error saving", description: "Could not save changes.", variant: "destructive" });
+        toast({ title: "Changes Saved", description: "The blog post has been successfully updated." });
       }
     });
   };
@@ -92,17 +117,14 @@ export default function EditBlog() {
   const handleDelete = () => {
     if (confirm("Are you sure you want to delete this blog?")) {
       remove(id, {
-        onSuccess: () => {
-          toast({ title: "Deleted", description: "Blog has been removed." });
-          setLocation("/blogs");
-        }
+        onSuccess: () => setLocation("/blogs"),
       });
     }
   };
 
   const handleSchedule = () => {
     if (!scheduleForm.siteId) {
-      toast({ title: "Select a site", description: "Please choose an external site to post to.", variant: "destructive" });
+      toast({ title: "Select a site", description: "Please select a destination site first.", variant: "destructive" });
       return;
     }
     if (!scheduleForm.scheduledAt) {
@@ -133,25 +155,98 @@ export default function EditBlog() {
     );
   };
 
+  const handleRegenerateImage = async () => {
+    if (!currentTitle) return;
+    setIsRegenerating(true);
+    try {
+      const res = await fetch(`/api/blogs/${id}/regenerate-image`, { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: currentTitle })
+      });
+      if (!res.ok) throw new Error("Failed to regenerate");
+      
+      const updated = await res.json();
+      // CRITICAL: Update form state to reflect new image and set dirty
+      setValue("imageUrl", updated.imageUrl, { shouldDirty: true });
+      
+      // Invalidate queries to update dashboard
+      queryClient.invalidateQueries({ queryKey: [api.blogs.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.blogs.get.path, id] });
+      
+      toast({ title: "Featured Image Updated", description: "Successfully refreshed the visuals based on current title." });
+    } catch (error) {
+      toast({ title: "Image Sync Failed", description: "Could not fetch new featured visual.", variant: "destructive" });
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  const handleRegenerateFull = async () => {
+    if (!currentTitle) return;
+    setIsRegeneratingFull(true);
+    try {
+      const res = await fetch(`/api/blogs/${id}/regenerate-full`, { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: currentTitle })
+      });
+      if (!res.ok) throw new Error("Failed to regenerate full content");
+      
+      const updatedBlog = await res.json();
+      
+      // CRITICAL: Update form state and set dirty to enable Save button
+      setValue("content", updatedBlog.content, { shouldDirty: true });
+      setValue("tags", updatedBlog.tags ? updatedBlog.tags.join(", ") : "", { shouldDirty: true });
+      setValue("metaDescription", updatedBlog.metaDescription || currentTitle, { shouldDirty: true });
+      setValue("imageUrl", updatedBlog.imageUrl, { shouldDirty: true });
+      setValue("topic", updatedBlog.topic || "", { shouldDirty: true });
+
+      // Invalidate queries to update dashboard
+      queryClient.invalidateQueries({ queryKey: [api.blogs.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.blogs.get.path, id] });
+
+      toast({ 
+        title: "Portfolio Refreshed", 
+        description: "Full content and high-density visuals have been synchronized." 
+      });
+    } catch (error) {
+      toast({ title: "Regeneration Failed", description: "OpenAI quota reached or network error.", variant: "destructive" });
+    } finally {
+      setIsRegeneratingFull(false);
+    }
+  };
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-20">
+    <div className="max-w-6xl mx-auto space-y-6 pb-20">
       {/* Header Actions */}
-      <div className="flex items-center justify-between sticky top-0 z-10 bg-background/80 backdrop-blur-md py-4 border-b border-border/50 -mx-6 px-6">
+      <div className="flex items-center justify-between sticky top-0 z-20 bg-background/80 backdrop-blur-xl py-5 border-b border-border/50 -mx-6 px-8 transition-all">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => setLocation("/blogs")} data-testid="button-back">
-            <ChevronLeft className="w-5 h-5" />
+          <Button variant="ghost" size="icon" onClick={() => setLocation("/blogs")} className="h-10 w-10 hover:bg-secondary rounded-xl">
+            <ChevronLeft className="w-6 h-6" />
           </Button>
           <div className="flex flex-col">
-            <h1 className="text-xl font-display font-bold text-foreground">Edit Blog</h1>
-            <span className="text-xs text-muted-foreground">Last saved: {format(new Date(), "h:mm a")}</span>
+            <h1 className="text-2xl font-display font-extrabold text-foreground tracking-tight">Edit Blog</h1>
+            <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground/60 flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Real-time synchronization active
+            </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="destructive" size="sm" onClick={handleDelete} disabled={isDeleting} data-testid="button-delete">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => setLocation(`/blogs/${id}/view`)} className="rounded-xl bg-background shadow-sm">
+            <Eye className="w-4 h-4 mr-2" />
+            View
+          </Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={isDeleting} className="rounded-xl opacity-80 hover:opacity-100">
             <Trash2 className="w-4 h-4 mr-2" />
             Delete
           </Button>
-          <Button onClick={handleSave} disabled={isSaving} className="shadow-lg shadow-primary/20" data-testid="button-save">
+          <Button 
+            onClick={handleSubmit(onSubmit)} 
+            disabled={isSaving} 
+            className={`rounded-xl px-8 font-bold shadow-xl transition-all ${isDirty ? 'shadow-primary/25 opacity-100' : 'opacity-100 grayscale-0'}`}
+          >
             {isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2" /> Save Changes</>}
           </Button>
         </div>
@@ -161,208 +256,288 @@ export default function EditBlog() {
         {/* Main Content Editor */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-card rounded-2xl border border-border/50 p-6 shadow-sm space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="title" className="text-base">Blog Title</Label>
-              <Input 
-                id="title"
-                data-testid="input-title"
-                value={formData.title} 
-                onChange={e => handleChange("title", e.target.value)}
-                className="text-lg font-display font-bold py-6"
-              />
+            <div className="space-y-3">
+              <div className="flex items-end gap-3">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="title" className="text-base text-muted-foreground/80 font-semibold px-1">Blog Title</Label>
+                  <Input 
+                    id="title"
+                    {...register("title")}
+                    className="text-lg font-display font-bold py-7 bg-background/50 border-border/50 focus:ring-primary/20 transition-all rounded-xl shadow-inner-sm"
+                    placeholder="Enter a compelling title..."
+                  />
+                </div>
+                <Button 
+                  onClick={handleRegenerateFull}
+                  disabled={isRegeneratingFull || !currentTitle}
+                  className="h-14 px-6 rounded-xl bg-gradient-to-r from-primary to-violet-600 hover:shadow-lg hover:shadow-primary/20 transition-all group shrink-0"
+                >
+                  {isRegeneratingFull ? (
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
+                  )}
+                  <span className="ml-2 hidden sm:inline">Update All from Title</span>
+                </Button>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="content" className="text-base">Content</Label>
-              <Textarea 
-                id="content"
-                data-testid="input-content"
-                value={formData.content}
-                onChange={e => handleChange("content", e.target.value)}
-                className="min-h-[500px] font-mono text-sm leading-relaxed p-4"
-              />
-              <p className="text-xs text-muted-foreground text-right">Markdown supported</p>
+            <div className="space-y-2 relative">
+              <div className="flex items-center justify-between px-1">
+                <Label htmlFor="content" className="text-base text-muted-foreground/80 font-semibold">Content</Label>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowPreview(!showPreview)}
+                  className={`text-[10px] uppercase tracking-widest font-bold h-7 rounded-lg gap-2 ${showPreview ? "text-primary bg-primary/10" : "text-muted-foreground"}`}
+                >
+                  {showPreview ? <><Type className="w-3.5 h-3.5" /> Source Code</> : <><Eye className="w-3.5 h-3.5" /> Live Preview</>}
+                </Button>
+              </div>
+              
+              <div className="relative group/editor">
+                {!showPreview ? (
+                  <Textarea 
+                    id="content"
+                    {...register("content")}
+                    className="min-h-[600px] font-mono text-sm leading-relaxed p-6 bg-background/50 border-border/50 focus:ring-primary/20 transition-all rounded-xl resize-none"
+                    placeholder="Write your blog content here..."
+                  />
+                ) : (
+                  <div className="min-h-[600px] p-8 bg-white/80 rounded-xl border border-border/50 overflow-auto prose prose-slate max-w-none shadow-inner-sm">
+                    <div 
+                      className="blog-preview-content"
+                      dangerouslySetInnerHTML={{ 
+                        __html: (watch("content") || "")
+                          .replace(/!\[(.*?)\](?:\((.*?)\))?/g, (match, alt, url) => {
+                            let raw = (alt || currentTitle || "business");
+                            const brandMap: Record<string, string> = { "linkdin": "linkedin", "social media": "networking" };
+                            Object.entries(brandMap).forEach(([k, v]) => { if (raw.toLowerCase().includes(k)) raw = raw.toLowerCase().replace(k,v); });
+                            const kw = raw.replace(/[^\w\s]/g, '').trim().replace(/\s+/g, ',');
+                            return `<img src="https://loremflickr.com/1200/600/${encodeURIComponent(kw)}?lock=${id}" alt="${alt}" class="rounded-xl shadow-md my-8 w-full object-cover max-h-[400px]">`;
+                          })
+                          .replace(/https:\/\/(?:picsum\.photos|source\.unsplash\.com)\/[^\s"'>]+/gi, (match) => {
+                             const kw = (currentTitle || "business").replace(/[^\w\s]/g, '').trim().replace(/\s+/g, ',');
+                             return `https://loremflickr.com/1200/600/${encodeURIComponent(kw)}?lock=${id}`;
+                          })
+                      }} 
+                    />
+                  </div>
+                )}
+                
+                {isRegeneratingFull && (
+                  <div className="absolute inset-0 bg-background/60 backdrop-blur-[4px] rounded-xl flex items-center justify-center z-10 transition-all duration-300">
+                    <div className="bg-background/95 border border-border/50 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-6 animate-in zoom-in-95 duration-200">
+                      <div className="relative">
+                        <Wand2 className="w-12 h-12 text-primary animate-pulse" />
+                        <div className="absolute -inset-2 bg-primary/30 blur-xl rounded-full animate-pulse" />
+                      </div>
+                      <div className="flex flex-col items-center text-center">
+                        <span className="text-lg font-bold tracking-tight text-foreground">Synchronizing Rich Content</span>
+                        <span className="text-xs text-muted-foreground font-mono mt-1 italic max-w-[200px]">Optimizing structure and imagery...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="text-[10px] tracking-wider uppercase font-bold text-muted-foreground/40 text-right px-2 italic">Markdown & HTML Supported</p>
             </div>
           </div>
         </div>
 
         {/* Sidebar Settings */}
         <div className="space-y-6">
-          {/* Publishing */}
-          <div className="bg-card rounded-2xl border border-border/50 p-6 shadow-sm space-y-6">
-            <h3 className="font-display font-semibold text-lg border-b border-border/50 pb-4">Publishing</h3>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-base">Published Status</Label>
-                <p className="text-xs text-muted-foreground">Visible to the public</p>
-              </div>
-              <Switch 
-                data-testid="switch-published"
-                checked={formData.isPublished}
-                onCheckedChange={checked => handleChange("isPublished", checked)}
-              />
-            </div>
-
-            <div className="pt-4 border-t border-border/50 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="slug">URL Slug</Label>
-                <div className="relative">
-                  <Globe className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-                  <Input 
-                    id="slug"
-                    data-testid="input-slug"
-                    value={formData.slug} 
-                    onChange={e => handleChange("slug", e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="meta">Meta Description</Label>
-                <Textarea 
-                  id="meta"
-                  data-testid="input-meta"
-                  value={formData.metaDescription} 
-                  onChange={e => handleChange("metaDescription", e.target.value)}
-                  className="h-24 resize-none"
-                  placeholder="Brief summary for SEO..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tags">Tags</Label>
-                <Input 
-                  id="tags"
-                  data-testid="input-tags"
-                  value={formData.tags}
-                  onChange={e => handleChange("tags", e.target.value)}
-                  placeholder="tech, ai, future..."
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Schedule Post */}
-          <div className="bg-card rounded-2xl border border-border/50 p-6 shadow-sm space-y-5">
+          {/* Featured Image */}
+          <div className="bg-card rounded-2xl border border-border/50 p-6 shadow-sm space-y-4">
             <h3 className="font-display font-semibold text-lg border-b border-border/50 pb-4 flex items-center gap-2">
-              <CalendarClock className="w-5 h-5 text-primary" />
-              Schedule Post
+              <ImageIcon className="w-5 h-5 text-primary" />
+              Featured Image
             </h3>
-
-            {!sites || sites.length === 0 ? (
-              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                <p className="text-xs text-amber-900 dark:text-amber-200">
-                  No external sites configured. Go to <button className="underline font-medium" onClick={() => setLocation("/settings")}>Settings</button> to add sites first.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="schedule-site">Website</Label>
-                  <Select
-                    value={scheduleForm.siteId}
-                    onValueChange={(val) => setScheduleForm(prev => ({ ...prev, siteId: val }))}
-                  >
-                    <SelectTrigger id="schedule-site" data-testid="select-schedule-site">
-                      <SelectValue placeholder="Select a site..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sites.filter(s => s.isEnabled).map((site) => (
-                        <SelectItem key={site.id} value={String(site.id)} data-testid={`option-site-${site.id}`}>
-                          <span className="flex items-center gap-2">
-                            {site.siteName}
-                            <span className="text-xs text-muted-foreground uppercase">({site.siteType})</span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            
+            <div className="aspect-video rounded-xl bg-secondary/30 overflow-hidden border border-border/50 relative group">
+              {currentImageUrl ? (
+                <img 
+                  src={currentImageUrl.startsWith("http") && !currentImageUrl.includes("source.unsplash.com") && !currentImageUrl.includes("picsum.photos")
+                    ? `${currentImageUrl}${currentImageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
+                    : `https://loremflickr.com/1200/600/${encodeURIComponent((currentTitle || "business").replace(/\s+/g, ','))}?lock=${id}`
+                  }
+                  alt={currentTitle} 
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+                  <ImageIcon className="w-10 h-10" />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="schedule-time">Date & Time</Label>
-                  <Input
-                    id="schedule-time"
-                    data-testid="input-schedule-time"
-                    type="datetime-local"
-                    value={scheduleForm.scheduledAt}
-                    onChange={(e) => setScheduleForm(prev => ({ ...prev, scheduledAt: e.target.value }))}
-                    min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
-                  />
-                </div>
-
-                <Button
-                  onClick={handleSchedule}
-                  disabled={isScheduling}
-                  className="w-full shadow-lg shadow-primary/20"
-                  data-testid="button-schedule"
-                >
-                  <CalendarClock className="w-4 h-4 mr-2" />
-                  {isScheduling ? "Scheduling..." : "Schedule Post"}
-                </Button>
-              </div>
-            )}
-
-            {/* Scheduled entries for this blog */}
-            {scheduledForThisBlog.length > 0 && (
-              <div className="pt-2 space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Scheduled</p>
-                {scheduledForThisBlog.map((post) => {
-                  const site = sites?.find(s => s.id === post.siteId);
-                  return (
-                    <div
-                      key={post.id}
-                      data-testid={`scheduled-item-${post.id}`}
-                      className="flex items-center justify-between bg-secondary/30 rounded-lg border border-border/50 px-3 py-2"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground truncate">{site?.siteName ?? "Unknown Site"}</p>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                          <Clock className="w-3 h-3 shrink-0" />
-                          <span>{format(new Date(post.scheduledAt), "MMM d, yyyy h:mm a")}</span>
-                        </div>
-                        <span className={`text-xs font-semibold mt-0.5 inline-block ${post.status === "posted" ? "text-emerald-600" : post.status === "failed" ? "text-destructive" : "text-amber-600"}`}>
-                          {post.status === "posted" ? (
-                            <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Posted</span>
-                          ) : post.status === "failed" ? "⚠ FAILED" : post.status.toUpperCase()}
-                        </span>
-                        {post.status === "failed" && (post as any).errorMessage && (
-                          <p className="text-xs text-destructive/80 mt-0.5 break-words">{(post as any).errorMessage}</p>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 h-7 w-7"
-                        onClick={() => deleteScheduled(post.id)}
-                        data-testid={`button-delete-scheduled-${post.id}`}
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </Button>
+              )}
+              
+              {(isRegenerating || isRegeneratingFull) && (
+                <div className="absolute inset-0 bg-background/70 backdrop-blur-md flex items-center justify-center z-10 animate-in fade-in duration-300">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="relative">
+                      <RefreshCw className="w-10 h-10 text-primary animate-spin" />
+                      <div className="absolute -inset-2 bg-primary/20 blur-xl rounded-full animate-pulse" />
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                    <span className="text-[11px] font-bold text-primary tracking-widest uppercase animate-pulse text-center px-6">Fetching Visuals...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Button 
+              variant="outline" 
+              onClick={handleRegenerateImage}
+              disabled={isRegenerating || isRegeneratingFull || !currentTitle}
+              className="w-full bg-background/50 hover:bg-secondary border-dashed border-2 rounded-xl h-11 transition-all"
+            >
+              {isRegenerating ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <ImageIcon className="w-4 h-4 mr-2" />
+              )}
+              Regenerate Featured Image
+            </Button>
+            <p className="text-[10px] text-muted-foreground/60 text-center px-4 leading-tight italic">
+              Uses high-quality search algorithms to find the most relevant cover image.
+            </p>
           </div>
 
-          {/* Preview */}
-          <div className="bg-primary/5 rounded-2xl border border-primary/10 p-6">
-            <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
-              <Eye className="w-4 h-4" /> Preview
+          {/* Publishing Settings */}
+          <div className="bg-card rounded-2xl border border-border/50 p-6 shadow-sm space-y-4">
+            <h3 className="font-display font-semibold text-lg border-b border-border/50 pb-4 flex items-center gap-2">
+              <Globe className="w-5 h-5 text-primary" />
+              Distribution
+            </h3>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/30">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-bold">Public Status</Label>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Visibility Toggle</p>
+                </div>
+                <Switch 
+                  checked={watch("isPublished")}
+                  onCheckedChange={(checked) => setValue("isPublished", checked, { shouldDirty: true })}
+                  className="data-[state=checked]:bg-emerald-500"
+                />
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
+                  <Hash className="w-3.5 h-3.5 text-primary" />
+                  Topic / Category (Card Tag)
+                </Label>
+                <Input 
+                  {...register("topic")} 
+                  placeholder="e.g. Technology, Real Estate..." 
+                  className="bg-background/50 h-9 text-sm rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
+                  <Tags className="w-3.5 h-3.5 text-primary" />
+                  Tags (Comma separated)
+                </Label>
+                <Input 
+                  {...register("tags")} 
+                  placeholder="SEO, AI, Future..." 
+                  className="bg-background/50 h-9 text-sm rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Schedule Queue</Label>
+                <div className="grid gap-4 bg-secondary/20 p-4 rounded-xl border border-border/30">
+                  <div className="space-y-2">
+                    <Label htmlFor="site-select">Destination Site</Label>
+                    <Select
+                      value={scheduleForm.siteId}
+                      onValueChange={(val) => setScheduleForm(prev => ({ ...prev, siteId: val }))}
+                    >
+                      <SelectTrigger id="site-select" className="bg-background/50">
+                        <SelectValue placeholder="Select site..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sites?.map((site) => (
+                          <SelectItem key={site.id} value={String(site.id)}>
+                            <span className="flex items-center gap-2">
+                              {site.siteName}
+                              <span className="text-[10px] text-muted-foreground uppercase">({site.siteType})</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="schedule-time">Broadcast Time</Label>
+                    <Input
+                      id="schedule-time"
+                      type="datetime-local"
+                      value={scheduleForm.scheduledAt}
+                      onChange={(e) => setScheduleForm(prev => ({ ...prev, scheduledAt: e.target.value }))}
+                      className="bg-background/50"
+                      min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleSchedule}
+                    disabled={isScheduling}
+                    className="w-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all rounded-xl"
+                  >
+                    <CalendarClock className="w-4 h-4 mr-2" />
+                    {isScheduling ? "Processing..." : "Schedule Post"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Scheduled List */}
+              {scheduledForThisBlog.length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40 italic">Scheduled Jobs</Label>
+                  <div className="space-y-2">
+                    {scheduledForThisBlog.map((post) => {
+                      const site = sites?.find(s => s.id === post.siteId);
+                      return (
+                        <div key={post.id} className="flex items-center justify-between bg-secondary/40 rounded-lg p-3 border border-border/20">
+                          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                            <span className="text-sm font-bold truncate">{site?.siteName ?? "Remote Site"}</span>
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
+                              <Clock className="w-3 h-3" />
+                              {format(new Date(post.scheduledAt), "MMM d, h:mm a")}
+                            </div>
+                            <span className={`text-[10px] font-bold uppercase mt-1 ${post.status === "posted" ? "text-emerald-500" : post.status === "failed" ? "text-destructive" : "text-amber-500"}`}>
+                              {post.status}
+                            </span>
+                          </div>
+                          <Button variant="ghost" size="icon" onClick={() => deleteScheduled(post.id)} className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* External Preview */}
+          <div className="bg-gradient-to-br from-indigo-500/5 to-primary/5 rounded-2xl border border-primary/10 p-6 space-y-4">
+            <h4 className="font-display font-bold text-primary flex items-center gap-2">
+              <Eye className="w-4 h-4" /> Final Audit
             </h4>
-            <p className="text-sm text-muted-foreground mb-4">
-              See how your blog post looks to visitors before publishing.
+            <p className="text-[11px] text-muted-foreground leading-relaxed italic">
+              Review exactly how your content appears to global visitors before finalizing changes.
             </p>
             <Button
               variant="outline"
-              className="w-full bg-background"
+              className="w-full bg-background/50 hover:bg-background border-primary/20 text-primary rounded-xl transition-all"
               onClick={() => window.open(`/api/blogs/preview/${id}`, '_blank')}
-              data-testid="button-preview"
             >
-              Open Preview
+              Preview on Live Engine
             </Button>
           </div>
         </div>

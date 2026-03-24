@@ -11,6 +11,7 @@ export const blogs = pgTable("blogs", {
   metaDescription: text("meta_description"),
   tags: text("tags").array(),
   imageUrl: text("image_url"),
+  featuredMediaProvider: text("featured_media_provider"), // 'unsplash', 'huggingface', 'openai', 'static'
   isPublished: boolean("is_published").default(false),
   publishedAt: timestamp("published_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -25,6 +26,7 @@ export const trends = pgTable("trends", {
 
 export const externalSites = pgTable("external_sites", {
   id: serial("id").primaryKey(),
+  clientId: text("client_id").unique(), // Public key for embed widget
   siteName: text("site_name").notNull(),
   siteType: text("site_type").notNull(),
   siteUrl: text("site_url").notNull(),
