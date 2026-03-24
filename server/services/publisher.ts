@@ -1,4 +1,4 @@
-import type { Blog, ExternalSite } from "@shared/schema";
+import type { Blog, ExternalSite } from "../../shared/schema";
 import axios from "axios";
 
 export interface PublishResult {

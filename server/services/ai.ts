@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { InsertBlog } from "@shared/schema";
+import { InsertBlog } from "../../shared/schema";
 import axios from "axios";
 import fs from "node:fs";
 import path from "node:path";

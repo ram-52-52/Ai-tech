@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { blogs, trends, externalSites, scheduledPosts, type Blog, type InsertBlog, type Trend, type ExternalSite, type InsertExternalSite, type ScheduledPost, type InsertScheduledPost } from "@shared/schema";
+import { blogs, trends, externalSites, scheduledPosts, type Blog, type InsertBlog, type Trend, type ExternalSite, type InsertExternalSite, type ScheduledPost, type InsertScheduledPost } from "../shared/schema";
 import { eq, desc, lte, and } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
