@@ -4,6 +4,7 @@ import { eq, desc, lte, and } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { BlogModel, TrendModel, ExternalSiteModel, ScheduledPostModel } from "./models";
 
 export interface IStorage {
   // Blogs
@@ -34,6 +35,116 @@ export interface IStorage {
   createScheduledPost(post: InsertScheduledPost): Promise<ScheduledPost>;
   updateScheduledPost(id: number, updates: Partial<Pick<ScheduledPost, "status" | "postedAt" | "errorMessage">>): Promise<ScheduledPost>;
   deleteScheduledPost(id: number): Promise<void>;
+}
+
+export class MongoStorage implements IStorage {
+  async getBlogs(): Promise<Blog[]> {
+    return (await BlogModel.find().sort({ createdAt: -1 })).map(doc => doc.toObject());
+  }
+
+  async getBlog(id: number): Promise<Blog | undefined> {
+    const doc = await BlogModel.findOne({ id });
+    return doc ? doc.toObject() : undefined;
+  }
+
+  async getBlogBySlug(slug: string): Promise<Blog | undefined> {
+    const doc = await BlogModel.findOne({ slug });
+    return doc ? doc.toObject() : undefined;
+  }
+
+  async createBlog(insertBlog: InsertBlog): Promise<Blog> {
+    const blog = new BlogModel({ ...insertBlog, publishedAt: new Date() });
+    await blog.save();
+    return blog.toObject();
+  }
+
+  async updateBlog(id: number, updates: Partial<InsertBlog>): Promise<Blog> {
+    const doc = await BlogModel.findOneAndUpdate({ id }, updates, { new: true });
+    if (!doc) throw new Error("Blog not found");
+    return doc.toObject();
+  }
+
+  async deleteBlog(id: number): Promise<void> {
+    await BlogModel.deleteOne({ id });
+  }
+
+  async getTrends(): Promise<Trend[]> {
+    return (await TrendModel.find().sort({ createdAt: -1 })).map(doc => doc.toObject());
+  }
+
+  async createTrend(trend: { topic: string; volume?: number }): Promise<Trend> {
+    const doc = new TrendModel(trend);
+    await doc.save();
+    return doc.toObject();
+  }
+
+  async clearTrends(): Promise<void> {
+    await TrendModel.deleteMany({});
+  }
+
+  async getExternalSites(): Promise<ExternalSite[]> {
+    return (await ExternalSiteModel.find().sort({ createdAt: -1 })).map(doc => doc.toObject());
+  }
+
+  async getExternalSite(id: number): Promise<ExternalSite | undefined> {
+    const doc = await ExternalSiteModel.findOne({ id });
+    return doc ? doc.toObject() : undefined;
+  }
+
+  async getExternalSiteByClientId(clientId: string): Promise<ExternalSite | undefined> {
+    const doc = await ExternalSiteModel.findOne({ clientId });
+    return doc ? doc.toObject() : undefined;
+  }
+
+  async createExternalSite(site: InsertExternalSite): Promise<ExternalSite> {
+    const clientId = site.siteType === "embed_widget" ? crypto.randomUUID() : null;
+    const doc = new ExternalSiteModel({ ...site, clientId });
+    await doc.save();
+    return doc.toObject();
+  }
+
+  async updateExternalSite(id: number, updates: Partial<InsertExternalSite>): Promise<ExternalSite> {
+    const doc = await ExternalSiteModel.findOneAndUpdate({ id }, updates, { new: true });
+    if (!doc) throw new Error("Site not found");
+    return doc.toObject();
+  }
+
+  async deleteExternalSite(id: number): Promise<void> {
+    await ExternalSiteModel.deleteOne({ id });
+  }
+
+  async getScheduledPosts(): Promise<ScheduledPost[]> {
+    return (await ScheduledPostModel.find().sort({ createdAt: -1 })).map(doc => doc.toObject());
+  }
+
+  async getScheduledPost(id: number): Promise<ScheduledPost | undefined> {
+    const doc = await ScheduledPostModel.findOne({ id });
+    return doc ? doc.toObject() : undefined;
+  }
+
+  async getPendingDueScheduledPosts(): Promise<ScheduledPost[]> {
+    const now = new Date();
+    return (await ScheduledPostModel.find({
+      status: "pending",
+      scheduledAt: { $lte: now }
+    })).map(doc => doc.toObject());
+  }
+
+  async createScheduledPost(post: InsertScheduledPost): Promise<ScheduledPost> {
+    const doc = new ScheduledPostModel(post);
+    await doc.save();
+    return doc.toObject();
+  }
+
+  async updateScheduledPost(id: number, updates: Partial<Pick<ScheduledPost, "status" | "postedAt" | "errorMessage">>): Promise<ScheduledPost> {
+    const doc = await ScheduledPostModel.findOneAndUpdate({ id }, updates, { new: true });
+    if (!doc) throw new Error("Post not found");
+    return doc.toObject();
+  }
+
+  async deleteScheduledPost(id: number): Promise<void> {
+    await ScheduledPostModel.deleteOne({ id });
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -399,4 +510,6 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = process.env.DATABASE_URL ? new DatabaseStorage() : new MemStorage();
+export const storage = process.env.MONGODB_URI 
+  ? new MongoStorage() 
+  : (process.env.DATABASE_URL ? new DatabaseStorage() : new MemStorage());
