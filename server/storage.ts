@@ -39,29 +39,30 @@ export interface IStorage {
 
 export class MongoStorage implements IStorage {
   async getBlogs(): Promise<Blog[]> {
-    return (await BlogModel.find().sort({ createdAt: -1 })).map(doc => doc.toObject());
+    const docs = await BlogModel.find().sort({ createdAt: -1 });
+    return docs.map(doc => doc.toObject() as Blog);
   }
 
   async getBlog(id: number): Promise<Blog | undefined> {
     const doc = await BlogModel.findOne({ id });
-    return doc ? doc.toObject() : undefined;
+    return doc ? (doc.toObject() as Blog) : undefined;
   }
 
   async getBlogBySlug(slug: string): Promise<Blog | undefined> {
     const doc = await BlogModel.findOne({ slug });
-    return doc ? doc.toObject() : undefined;
+    return doc ? (doc.toObject() as Blog) : undefined;
   }
 
   async createBlog(insertBlog: InsertBlog): Promise<Blog> {
     const blog = new BlogModel({ ...insertBlog, publishedAt: new Date() });
     await blog.save();
-    return blog.toObject();
+    return blog.toObject() as Blog;
   }
 
   async updateBlog(id: number, updates: Partial<InsertBlog>): Promise<Blog> {
     const doc = await BlogModel.findOneAndUpdate({ id }, updates, { new: true });
     if (!doc) throw new Error("Blog not found");
-    return doc.toObject();
+    return doc.toObject() as Blog;
   }
 
   async deleteBlog(id: number): Promise<void> {
@@ -69,13 +70,14 @@ export class MongoStorage implements IStorage {
   }
 
   async getTrends(): Promise<Trend[]> {
-    return (await TrendModel.find().sort({ createdAt: -1 })).map(doc => doc.toObject());
+    const docs = await TrendModel.find().sort({ createdAt: -1 });
+    return docs.map(doc => doc.toObject() as Trend);
   }
 
   async createTrend(trend: { topic: string; volume?: number }): Promise<Trend> {
     const doc = new TrendModel(trend);
     await doc.save();
-    return doc.toObject();
+    return doc.toObject() as Trend;
   }
 
   async clearTrends(): Promise<void> {
@@ -83,30 +85,31 @@ export class MongoStorage implements IStorage {
   }
 
   async getExternalSites(): Promise<ExternalSite[]> {
-    return (await ExternalSiteModel.find().sort({ createdAt: -1 })).map(doc => doc.toObject());
+    const docs = await ExternalSiteModel.find().sort({ createdAt: -1 });
+    return docs.map(doc => doc.toObject() as ExternalSite);
   }
 
   async getExternalSite(id: number): Promise<ExternalSite | undefined> {
     const doc = await ExternalSiteModel.findOne({ id });
-    return doc ? doc.toObject() : undefined;
+    return doc ? (doc.toObject() as ExternalSite) : undefined;
   }
 
   async getExternalSiteByClientId(clientId: string): Promise<ExternalSite | undefined> {
     const doc = await ExternalSiteModel.findOne({ clientId });
-    return doc ? doc.toObject() : undefined;
+    return doc ? (doc.toObject() as ExternalSite) : undefined;
   }
 
   async createExternalSite(site: InsertExternalSite): Promise<ExternalSite> {
     const clientId = site.siteType === "embed_widget" ? crypto.randomUUID() : null;
     const doc = new ExternalSiteModel({ ...site, clientId });
     await doc.save();
-    return doc.toObject();
+    return doc.toObject() as ExternalSite;
   }
 
   async updateExternalSite(id: number, updates: Partial<InsertExternalSite>): Promise<ExternalSite> {
     const doc = await ExternalSiteModel.findOneAndUpdate({ id }, updates, { new: true });
     if (!doc) throw new Error("Site not found");
-    return doc.toObject();
+    return doc.toObject() as ExternalSite;
   }
 
   async deleteExternalSite(id: number): Promise<void> {
@@ -114,32 +117,34 @@ export class MongoStorage implements IStorage {
   }
 
   async getScheduledPosts(): Promise<ScheduledPost[]> {
-    return (await ScheduledPostModel.find().sort({ createdAt: -1 })).map(doc => doc.toObject());
+    const docs = await ScheduledPostModel.find().sort({ createdAt: -1 });
+    return docs.map(doc => doc.toObject() as ScheduledPost);
   }
 
   async getScheduledPost(id: number): Promise<ScheduledPost | undefined> {
     const doc = await ScheduledPostModel.findOne({ id });
-    return doc ? doc.toObject() : undefined;
+    return doc ? (doc.toObject() as ScheduledPost) : undefined;
   }
 
   async getPendingDueScheduledPosts(): Promise<ScheduledPost[]> {
     const now = new Date();
-    return (await ScheduledPostModel.find({
+    const docs = await ScheduledPostModel.find({
       status: "pending",
       scheduledAt: { $lte: now }
-    })).map(doc => doc.toObject());
+    });
+    return docs.map(doc => doc.toObject() as ScheduledPost);
   }
 
   async createScheduledPost(post: InsertScheduledPost): Promise<ScheduledPost> {
     const doc = new ScheduledPostModel(post);
     await doc.save();
-    return doc.toObject();
+    return doc.toObject() as ScheduledPost;
   }
 
   async updateScheduledPost(id: number, updates: Partial<Pick<ScheduledPost, "status" | "postedAt" | "errorMessage">>): Promise<ScheduledPost> {
     const doc = await ScheduledPostModel.findOneAndUpdate({ id }, updates, { new: true });
     if (!doc) throw new Error("Post not found");
-    return doc.toObject();
+    return doc.toObject() as ScheduledPost;
   }
 
   async deleteScheduledPost(id: number): Promise<void> {

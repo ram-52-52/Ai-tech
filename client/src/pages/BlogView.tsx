@@ -15,21 +15,7 @@ export default function BlogView() {
 
   const { data: blog, isLoading } = useBlog(id);
 
-  // High-level "Image Rescue" effect to fix broken images globally
-  useEffect(() => {
-    const handleImageError = (e: Event) => {
-      const target = e.target as HTMLImageElement;
-      if (target.tagName === 'IMG' && !target.dataset.rescued) {
-        console.warn("[BlogView] Rescuing broken image:", target.src);
-        target.dataset.rescued = "true";
-        // Fallback to a guaranteed relevant baseline if the specific keyword fails
-        target.src = `https://loremflickr.com/1200/600/${encodeURIComponent(blog?.topic?.replace(/\s+/g, ',') || "generic,technology")}`;
-      }
-    };
-
-    window.addEventListener('error', handleImageError, true);
-    return () => window.removeEventListener('error', handleImageError, true);
-  }, [blog?.topic]); // Dependency on blog.topic
+  // Removed redundant image rescue effect to trust backend-resolved URLs
 
   if (isLoading) {
     return (
@@ -128,52 +114,6 @@ export default function BlogView() {
             dangerouslySetInnerHTML={{ 
               __html: (blog.content || "")
                 .replace(/<div style="background: #f8fafc;[\s\S]*?Creative Preview Mode[\s\S]*?<\/div>/gi, "")
-                .replace(/!\[(.*?)\](?:\((.*?)\))?/g, (match, alt, url, offset) => {
-                  let rawKeyword = (alt || blog.topic || "innovation");
-                  
-                  // Brand-Aware Mapper
-                  const brandMap: Record<string, string> = { "linkdin": "linkedin", "social media": "business networking,social network" };
-                  Object.entries(brandMap).forEach(([k, v]) => {
-                    if (rawKeyword.toLowerCase().includes(k)) rawKeyword = rawKeyword.toLowerCase().replace(k, v);
-                  });
-
-                  // India Hint Injection
-                  const indiaHints = ["republic", "army", "independence", "diwali", "holi", "india", "bharat", "soldier"];
-                  if (indiaHints.some(hint => rawKeyword.toLowerCase().includes(hint)) && !rawKeyword.toLowerCase().includes("india")) {
-                    rawKeyword = `India ${rawKeyword}`;
-                  }
-
-                  const keyword = rawKeyword
-                    .replace(/[^\w\s]/g, '')
-                    .trim()
-                    .replace(/\s+/g, ',');
-                  
-                  const seed = (blog.id * 7) + (offset % 500);
-                  const finalUrl = url && url.startsWith("http") && !url.includes("source.unsplash.com") && !url.includes("picsum.photos") 
-                    ? url 
-                    : `https://loremflickr.com/1200/600/${encodeURIComponent(keyword)}?lock=${seed}`;
-                    
-                  return `<img src="${finalUrl}" alt="${alt}" class="rounded-2xl shadow-lg my-12 w-full border border-border/50 max-h-[500px] object-cover shadow-primary/10 transition-all hover:scale-[1.01]">`;
-                })
-                .replace(/https:\/\/(?:source\.unsplash\.com|picsum\.photos)\/[^\s"'>]+/gi, (match, offset) => {
-                  let rawKeyword = (blog.topic || blog.title || "technology");
-                  
-                  const brandMap: Record<string, string> = { "linkdin": "linkedin", "social media": "business networking" };
-                  Object.entries(brandMap).forEach(([k, v]) => {
-                    if (rawKeyword.toLowerCase().includes(k)) rawKeyword = rawKeyword.toLowerCase().replace(k, v);
-                  });
-
-                  if (["republic", "army", "indian", "india"].some(h => rawKeyword.toLowerCase().includes(h)) && !rawKeyword.toLowerCase().includes("india")) {
-                    rawKeyword = `India ${rawKeyword}`;
-                  }
-
-                  const keyword = rawKeyword
-                    .replace(/[^\w\s]/g, '')
-                    .trim()
-                    .replace(/\s+/g, ',');
-                  const seed = (blog.id * 13) + (offset % 500);
-                  return `https://loremflickr.com/1200/600/${encodeURIComponent(keyword)}?lock=${seed}`;
-                })
             }}
           />
         </div>

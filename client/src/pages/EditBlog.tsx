@@ -75,22 +75,7 @@ export default function EditBlog() {
     }
   }, [blog, reset]);
 
-  // Global Image Rescue for Edit Page
-  useEffect(() => {
-    const handleImageError = (e: Event) => {
-      const target = e.target as HTMLImageElement;
-      if (target.tagName === 'IMG' && !target.dataset.rescued) {
-        target.dataset.rescued = "true";
-        const rawKeyword = (currentTitle || blog?.topic || "business,technology")
-          .replace(/[^\w\s]/g, '')
-          .trim()
-          .replace(/\s+/g, ',');
-        target.src = `https://loremflickr.com/1200/600/${encodeURIComponent(rawKeyword)}?lock=${id}`;
-      }
-    };
-    window.addEventListener('error', handleImageError, true);
-    return () => window.removeEventListener('error', handleImageError, true);
-  }, [id, currentTitle, blog?.topic]);
+  // Removed redundant image rescue effect to trust backend-resolved URLs
 
   if (isLoading) {
     return (
@@ -309,17 +294,6 @@ export default function EditBlog() {
                       className="blog-preview-content"
                       dangerouslySetInnerHTML={{ 
                         __html: (watch("content") || "")
-                          .replace(/!\[(.*?)\](?:\((.*?)\))?/g, (match, alt, url) => {
-                            let raw = (alt || currentTitle || "business");
-                            const brandMap: Record<string, string> = { "linkdin": "linkedin", "social media": "networking" };
-                            Object.entries(brandMap).forEach(([k, v]) => { if (raw.toLowerCase().includes(k)) raw = raw.toLowerCase().replace(k,v); });
-                            const kw = raw.replace(/[^\w\s]/g, '').trim().replace(/\s+/g, ',');
-                            return `<img src="https://loremflickr.com/1200/600/${encodeURIComponent(kw)}?lock=${id}" alt="${alt}" class="rounded-xl shadow-md my-8 w-full object-cover max-h-[400px]">`;
-                          })
-                          .replace(/https:\/\/(?:picsum\.photos|source\.unsplash\.com)\/[^\s"'>]+/gi, (match) => {
-                             const kw = (currentTitle || "business").replace(/[^\w\s]/g, '').trim().replace(/\s+/g, ',');
-                             return `https://loremflickr.com/1200/600/${encodeURIComponent(kw)}?lock=${id}`;
-                          })
                       }} 
                     />
                   </div>
@@ -357,10 +331,7 @@ export default function EditBlog() {
             <div className="aspect-video rounded-xl bg-secondary/30 overflow-hidden border border-border/50 relative group">
               {currentImageUrl ? (
                 <img 
-                  src={currentImageUrl.startsWith("http") && !currentImageUrl.includes("source.unsplash.com") && !currentImageUrl.includes("picsum.photos")
-                    ? `${currentImageUrl}${currentImageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
-                    : `https://loremflickr.com/1200/600/${encodeURIComponent((currentTitle || "business").replace(/\s+/g, ','))}?lock=${id}`
-                  }
+                  src={currentImageUrl || "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?q=80&w=1200"}
                   alt={currentTitle} 
                   className="w-full h-full object-cover transition-transform group-hover:scale-105"
                 />
