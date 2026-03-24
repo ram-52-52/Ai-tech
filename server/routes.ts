@@ -144,10 +144,8 @@ export async function registerRoutes(
       if (!blog) return res.status(404).json({ message: "Blog not found" });
 
       const targetTitle = bodyTitle || blog.title;
-      console.log(`[Route] Regenerating FULL blog ${id} using title: "${targetTitle}"`);
       
       // 1. Generate Full Blog (Content, Tags, Image) using the unified service
-      console.log(`[Route] Triggering unified AI generation for "${targetTitle}"...`);
       const generated = await generateBlogPost(targetTitle);
       
       // 2. Optional WordPress Media Sync
@@ -156,7 +154,6 @@ export async function registerRoutes(
       
       if (wpSite && generated.imageUrl) {
         try {
-          console.log(`[Route] Found connected WordPress site: ${wpSite.siteName}. Syncing image: ${generated.imageUrl}`);
           await uploadFeaturedImageToWordPress(generated.imageUrl, generated.title, wpSite.siteUrl);
         } catch (wpError: any) {
           console.error(`[WP Sync] Image sync to WordPress failed (non-fatal):`, wpError.message);
@@ -188,7 +185,6 @@ export async function registerRoutes(
       if (!blog) return res.status(404).json({ message: "Blog not found" });
 
       const targetTitle = bodyTitle || blog.title;
-      console.log(`[Route] Regenerating image for blog ${id} using title: "${targetTitle}"`);
       
       const imageResult = await generateImageForBlog(targetTitle, blog.slug);
       
@@ -217,7 +213,7 @@ export async function registerRoutes(
         await storage.createTrend({ topic: t.topic, volume: t.volume });
       }
       
-      console.log(`Updated trends with ${top10.length} items`);
+      // Silent log
     } catch (error) {
       console.error("Auto-refresh of trends failed:", error);
     }
@@ -242,15 +238,12 @@ export async function registerRoutes(
 
   // --- Cron Job: Auto-Blog (Every 1 Hour) ---
   cron.schedule("0 * * * *", async () => {
-    console.log("⏰ Running Auto-Blog Cron Job...");
     try {
       const trends = await fetchTrends();
       if (trends.length > 0) {
         const topTrend = trends[0];
-        console.log(`Creating blog for top trend: ${topTrend.topic}`);
         const generatedBlog = await generateBlogPost(topTrend.topic);
         await storage.createBlog({ ...generatedBlog, isPublished: true });
-        console.log("✅ Auto-blog created successfully.");
       }
     } catch (error) {
       console.error("❌ Auto-blog cron failed:", error);
@@ -262,7 +255,6 @@ export async function registerRoutes(
     const duePosts = await storage.getPendingDueScheduledPosts();
     if (duePosts.length === 0) return;
 
-    console.log(`⏰ Processing ${duePosts.length} due scheduled post(s)...`);
 
     for (const post of duePosts) {
       const [blog, site] = await Promise.all([
@@ -281,7 +273,6 @@ export async function registerRoutes(
       const result = await publishBlog(blog, site);
 
       if (result.success) {
-        console.log(`✅ Published "${blog.title}" to ${site.siteName}${result.postUrl ? " — " + result.postUrl : ""}`);
         await storage.updateScheduledPost(post.id, {
           status: "posted",
           postedAt: new Date(),

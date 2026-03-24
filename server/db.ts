@@ -7,7 +7,6 @@ if (!MONGODB_URI) {
   console.warn("MONGODB_URI not set. MongoDB storage will be unavailable.");
 } else {
   mongoose.connect(MONGODB_URI)
-    .then(() => console.log("Connected to MongoDB successfully"))
     .catch((err) => console.error("MongoDB connection error:", err));
 }
 

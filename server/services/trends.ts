@@ -10,7 +10,6 @@ export interface TrendItem {
 
 export async function fetchTrends(): Promise<TrendItem[]> {
   try {
-    console.log("Fetching Google Trends...");
     
     // Fetch with custom headers to avoid 404/403
     const response = await fetch(`${GOOGLE_TRENDS_RSS}&t=${Date.now()}`, {
@@ -29,8 +28,6 @@ export async function fetchTrends(): Promise<TrendItem[]> {
     const xml = await response.text();
     const feed = await parser.parseString(xml);
     
-    console.log("Feed title:", feed.title);
-    console.log("Feed items count:", feed.items.length);
 
     const trends: TrendItem[] = feed.items.map(item => ({
       topic: item.title || "Unknown Trend",

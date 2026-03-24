@@ -62,8 +62,6 @@ export async function uploadFeaturedImageToWordPress(
       imageBuffer = fs.readFileSync(localPath);
     }
 
-    console.log(`[Uploader] Image downloaded. Size: ${imageBuffer.length} bytes`);
-
     // ------------------------------------------------------------------------
     // 3. Upload raw buffer to WordPress Media REST API
     // ------------------------------------------------------------------------

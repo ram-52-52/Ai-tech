@@ -10,7 +10,6 @@ const apiKey = (process.env.GEMINI_API_KEY || "").trim();
 if (!apiKey) {
   console.error("[Gemini] ERROR: GEMINI_API_KEY is empty or missing in .env!");
 } else {
-  console.log(`[Gemini] API Key found (starts with: ${apiKey.substring(0, 8)}... length: ${apiKey.length})`);
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -19,7 +18,6 @@ const genAI = new GoogleGenerativeAI(apiKey);
  * Main function to generate a full blog post using Google Gemini
  */
 export async function generateBlogPost(topic: string): Promise<InsertBlog> {
-  console.log(`[Service] Generating professional English blog post via Gemini for: ${topic}`);
 
   const cleanInstructionalPrompt = (text: string) => {
     let cleaned = text.trim();
@@ -87,7 +85,6 @@ export async function generateBlogPost(topic: string): Promise<InsertBlog> {
         console.warn("[Gemini] Failed to parse meta JSON, raw output was:", metaContent);
       }
     }
-    console.log("[Gemini] Meta generation process completed.");
   } catch (error: any) {
     console.warn("[Gemini] Meta generation failed, using fallbacks.", error.message);
   }
@@ -109,7 +106,6 @@ export async function generateBlogPost(topic: string): Promise<InsertBlog> {
       return raw;
     };
 
-    console.log(`[Gemini] Starting segmented generation for: "${pureSubject}"`);
 
     // --- Section 1: Introduction (~250 words) ---
     const introPrompt = `Write ONLY the "Introduction" section for a blog post about "${pureSubject}". This section MUST be between 240 and 260 words. Output ONLY raw HTML using <p> and <strong>. Hook the reader, give deep background, and outline what will be covered. No <h1> or <h2> tags in this section. Do not summarize or cut short.`;
@@ -151,7 +147,6 @@ export async function generateBlogPost(topic: string): Promise<InsertBlog> {
     }
 
     content = sanitizeFinalContent(assembled);
-    console.log(`[Gemini] Segmented generation complete. Total length: ${content.length} chars.`);
 
   } catch (error: any) {
     console.warn(`[Gemini] Segmented generation failed: ${error.message}. Attempting OpenAI Fallback...`);
@@ -160,7 +155,6 @@ export async function generateBlogPost(topic: string): Promise<InsertBlog> {
     try {
       const openAIKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
       if (openAIKey) {
-        console.log("[Service] Falling back to OpenAI for content generation...");
         const openai = new OpenAI({ apiKey: openAIKey.trim() });
         const response = await openai.chat.completions.create({
           model: "gpt-3.5-turbo",
@@ -177,7 +171,6 @@ export async function generateBlogPost(topic: string): Promise<InsertBlog> {
         const rawText = response.choices[0]?.message?.content || "";
         content = sanitizeFinalContent(rawText);
         if (content && content.length > 500) {
-          console.log("[OpenAI] Fallback generation successful.");
           return {
             title: metaData.title,
             content: await resolveContentImages(content, topic),
@@ -301,12 +294,10 @@ async function resolveContentImages(html: string, blogTopic: string): Promise<st
 
   if (tasks.length === 0) return html;
   
-  console.log(`[Service] Resolving ${tasks.length} content images with focus on relevance...`);
   
   for (const task of tasks.slice(0, 5)) {
     try {
       const sanitizedKey = task.keyword.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, ',');
-      console.log(`[Service] Fetching relevant image for: "${sanitizedKey}"`);
       
       const { url } = await generateImageForBlog(sanitizedKey, "content-" + Math.random().toString(36).substring(7));
       
@@ -321,7 +312,6 @@ async function resolveContentImages(html: string, blogTopic: string): Promise<st
          updatedHtml = updatedHtml.replace(targetRegex, url);
       }
       
-      console.log(`[Service] Successfully replaced all instances of "${task.target}" with "${url}"`);
       await new Promise(r => setTimeout(r, 300));
     } catch (err) {
       console.warn(`[Service] Failed to resolve image for "${task.keyword}":`, err);
@@ -338,7 +328,6 @@ async function resolveContentImages(html: string, blogTopic: string): Promise<st
  * 3. Static Tech Placeholder (Reliable fallback)
  */
 export async function generateImageForBlog(title: string, slug: string): Promise<{ url: string; provider: string }> {
-  console.log(`[Service] Generating Featured Image for: "${title}"`);
   
   let sanitizedTitle = title.replace(/[^\w\s-]/gi, '').substring(0, 50).trim() || "technology";
   
@@ -391,7 +380,6 @@ export async function generateImageForBlog(title: string, slug: string): Promise
   try {
     const hfToken = process.env.HUGGINGFACE_TOKEN || process.env.HF_API_KEY;
     if (hfToken) {
-      console.log(`[HuggingFace] Generating image for: "${sanitizedTitle}"`);
       const hfResponse = await axios.post(
         "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
         { inputs: `Professional high-quality cinematic photography for ${sanitizedTitle}, wide angle, 8k resolution` },

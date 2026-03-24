@@ -12,7 +12,6 @@ async function publishToMedium(blog: Blog, site: ExternalSite): Promise<PublishR
 
   // Mock success for testing
   if (integrationToken === "provide_token_in_ui") {
-    console.log("Mocking Medium publishing success for testing...");
     return { success: true, postUrl: `https://medium.com/@${site.username}/${blog.slug}` };
   }
 
@@ -95,7 +94,6 @@ export async function uploadMediaToWordPress(imageUrl: string, site: ExternalSit
       });
 
       if (mediaRes.status === 201 || mediaRes.status === 200) {
-        console.log(`✅ WordPress media uploaded, ID: ${mediaRes.data.id}`);
         return mediaRes.data.id;
       }
     }
@@ -266,7 +264,6 @@ async function publishToLinkedIn(blog: Blog, site: ExternalSite): Promise<Publis
     if (userInfoRes.ok) {
       const userInfo = await userInfoRes.json() as { sub: string };
       authorId = userInfo.sub;
-      console.log(`Found LinkedIn Author ID via /userinfo: ${authorId}`);
     } else {
       // 2. Try legacy /me endpoint (for legacy scopes: r_liteprofile)
       const meRes = await fetch("https://api.linkedin.com/v2/me", {
@@ -279,7 +276,6 @@ async function publishToLinkedIn(blog: Blog, site: ExternalSite): Promise<Publis
       if (meRes.ok) {
         const meData = await meRes.json() as { id: string };
         authorId = meData.id;
-        console.log(`Found LinkedIn Author ID via /v2/me: ${authorId}`);
       } else {
         const err = await meRes.text();
         return { success: false, error: `LinkedIn identity check failed. Please ensure you have enabled "Sign In with LinkedIn using OpenID Connect" in your Developer Portal. Error: ${err}` };
@@ -302,7 +298,6 @@ async function publishToLinkedIn(blog: Blog, site: ExternalSite): Promise<Publis
     // Attempt image upload if URL exists
     if (blog.imageUrl) {
       try {
-        console.log(`📸 Attempting to upload image to LinkedIn: ${blog.imageUrl}`);
 
         // Step 1: Register Upload
         const registerRes = await fetch("https://api.linkedin.com/v2/assets?action=registerUpload", {
@@ -331,7 +326,6 @@ async function publishToLinkedIn(blog: Blog, site: ExternalSite): Promise<Publis
           const uploadUrl = registerData.value.uploadMechanism["com.linkedin.digitalasset.uploaders.MediaUploadHttpRequest"].uploadUrl;
           mediaUrn = registerData.value.asset;
 
-          console.log(`Registered image asset: ${mediaUrn}`);
 
           // Step 2: Get image buffer
           let imageBuffer: Buffer;
@@ -361,7 +355,6 @@ async function publishToLinkedIn(blog: Blog, site: ExternalSite): Promise<Publis
             console.error(`Failed to upload image binary: ${await uploadRes.text()}`);
             mediaUrn = undefined; // Fallback to text
           } else {
-            console.log("✅ Image uploaded successfully to LinkedIn");
           }
         } else {
           console.error(`Failed to register LinkedIn image upload: ${await registerRes.text()}`);
@@ -439,7 +432,7 @@ async function publishToEmbedWidget(blog: Blog, site: ExternalSite): Promise<Pub
 }
 
 export async function publishBlog(blog: Blog, site: ExternalSite): Promise<PublishResult> {
-  console.log(`📤 Publishing blog "${blog.title}" to ${site.siteName} (${site.siteType})`);
+  // Silent log
 
   switch (site.siteType) {
     case "embed_widget":
