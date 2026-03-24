@@ -346,30 +346,30 @@ export default function Settings() {
                             Get Snippet
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl bg-slate-50 dark:bg-slate-900 border-none shadow-2xl">
+                        <DialogContent className="max-w-[95vw] md:max-w-3xl bg-slate-50 dark:bg-slate-900 border-none shadow-2xl overflow-hidden">
                           <DialogHeader>
-                            <DialogTitle className="text-2xl font-display font-black text-slate-900 dark:text-slate-50">Embed Widget Snippet</DialogTitle>
+                            <DialogTitle className="text-xl md:text-2xl font-display font-black text-slate-900 dark:text-slate-50">Embed Widget Snippet</DialogTitle>
                           </DialogHeader>
                           <div className="space-y-6 py-4">
-                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-xl flex items-start gap-3">
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-xl flex flex-col md:flex-row items-center md:items-start gap-3">
                               <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-800/50 flex items-center justify-center shrink-0">
                                 <LinkIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                               </div>
-                              <p className="text-sm text-blue-800/80 dark:text-blue-300 leading-relaxed">
+                              <p className="text-sm text-blue-800/80 dark:text-blue-300 leading-relaxed text-center md:text-left">
                                 Copy and paste this code into your external website's HTML where you want the feed to appear.
                                 <br />
-                                <span className="font-bold">Important:</span> This will only work on <code className="bg-blue-100 dark:bg-blue-800/50 px-1.5 py-0.5 rounded text-blue-900 dark:text-blue-200">{site.siteUrl}</code>.
+                                <span className="font-bold">Important:</span> This will only work on <code className="bg-blue-100 dark:bg-blue-800/50 px-1.5 py-0.5 rounded text-blue-900 dark:text-blue-200 break-all">{site.siteUrl}</code>.
                               </p>
                             </div>
 
-                            <div className="relative group rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-lg">
-                              <div className="bg-slate-100 dark:bg-slate-800/50 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                                <div className="flex gap-1.5">
+                            <div className="relative group rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-lg bg-[#0d1117]">
+                              <div className="bg-slate-100 dark:bg-slate-800/30 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                <div className="flex gap-1.5 shrink-0">
                                   <div className="w-3 h-3 rounded-full bg-red-400/80" />
                                   <div className="w-3 h-3 rounded-full bg-amber-400/80" />
                                   <div className="w-3 h-3 rounded-full bg-emerald-400/80" />
                                 </div>
-                                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest font-bold">HTML Snippet</span>
+                                <span className="hidden md:inline text-[10px] font-mono text-slate-500 uppercase tracking-widest font-bold">HTML Snippet</span>
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -400,8 +400,8 @@ export default function Settings() {
                                   Copy Code
                                 </Button>
                               </div>
-                              <div className="bg-[#0d1117] p-6 overflow-x-auto">
-                                <pre className="font-mono text-xs md:text-sm leading-relaxed text-slate-300 whitespace-pre">
+                              <div className="p-4 md:p-6 overflow-x-auto">
+                                <pre className="font-mono text-[10px] md:text-sm leading-relaxed text-slate-300 whitespace-pre">
 {`<div id="autoblog-feed" class="autoblog-feed-container"></div>
 <script>
   fetch('${window.location.origin}/api/v1/feed/${site.clientId}')
