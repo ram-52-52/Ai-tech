@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
-import { api } from "@shared/routes";
+import { api } from "../shared/routes";
 import { z } from "zod";
 import { generateBlogPost, generateImageForBlog } from "./services/ai";
 import { fetchTrends } from "./services/trends";
