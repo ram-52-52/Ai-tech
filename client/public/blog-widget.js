@@ -4,12 +4,32 @@
     const API_BASE_URL = currentScript ? new URL(currentScript.src).origin : 'https://ai-tech-5l4y.onrender.com';
     const CSS_URL = `${API_BASE_URL}/widget.css`;
 
-    async function initWidget() {
-        const container = document.getElementById(CONTAINER_ID);
-        if (!container) {
-            console.error(`[AI-Tech Widget] Container #${CONTAINER_ID} not found.`);
-            return;
-        }
+    function initWidget() {
+        const MAX_RETRIES = 10;
+        const RETRY_INTERVAL = 500;
+        let attempts = 0;
+
+        const tryInit = () => {
+            const container = document.getElementById(CONTAINER_ID);
+
+            if (!container) {
+                attempts++;
+                if (attempts >= MAX_RETRIES) {
+                    console.error(`[AI-Tech Widget] Container #${CONTAINER_ID} not found after ${MAX_RETRIES} attempts (${MAX_RETRIES * RETRY_INTERVAL / 1000}s). Giving up.`);
+                    return;
+                }
+                setTimeout(tryInit, RETRY_INTERVAL);
+                return;
+            }
+
+            // Container found — proceed with initialization
+            setupWidget(container);
+        };
+
+        tryInit();
+    }
+
+    async function setupWidget(container) {
 
         const clientId = container.getAttribute('data-client-id');
         if (!clientId) {

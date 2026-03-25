@@ -81,7 +81,7 @@ export class MongoStorage implements IStorage {
   }
 
   async updateBlog(id: number, updates: Partial<InsertBlog>): Promise<Blog> {
-    const doc = await BlogModel.findOneAndUpdate({ id }, updates, { new: true });
+    const doc = await BlogModel.findOneAndUpdate({ id }, updates, { returnDocument: 'after' });
     if (!doc) throw new Error("Blog not found");
     return doc.toObject() as Blog;
   }
@@ -141,7 +141,7 @@ export class MongoStorage implements IStorage {
   }
 
   async updateExternalSite(id: number, updates: Partial<InsertExternalSite>): Promise<ExternalSite> {
-    const doc = await ExternalSiteModel.findOneAndUpdate({ id }, updates, { new: true });
+    const doc = await ExternalSiteModel.findOneAndUpdate({ id }, updates, { returnDocument: 'after' });
     if (!doc) throw new Error("Site not found");
     return doc.toObject() as ExternalSite;
   }
@@ -176,7 +176,7 @@ export class MongoStorage implements IStorage {
   }
 
   async updateScheduledPost(id: number, updates: Partial<Pick<ScheduledPost, "status" | "postedAt" | "errorMessage">>): Promise<ScheduledPost> {
-    const doc = await ScheduledPostModel.findOneAndUpdate({ id }, updates, { new: true });
+    const doc = await ScheduledPostModel.findOneAndUpdate({ id }, updates, { returnDocument: 'after' });
     if (!doc) throw new Error("Post not found");
     return doc.toObject() as ScheduledPost;
   }
