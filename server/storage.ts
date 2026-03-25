@@ -1,12 +1,16 @@
 import { db } from "./db";
-import { blogs, trends, externalSites, scheduledPosts, type Blog, type InsertBlog, type Trend, type ExternalSite, type InsertExternalSite, type ScheduledPost, type InsertScheduledPost } from "../shared/schema";
+import { blogs, trends, externalSites, scheduledPosts, users, type Blog, type InsertBlog, type Trend, type ExternalSite, type InsertExternalSite, type ScheduledPost, type InsertScheduledPost, type User, type InsertUser } from "../shared/schema";
 import { eq, desc, lte, and, or, like } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { BlogModel, TrendModel, ExternalSiteModel, ScheduledPostModel } from "./models";
+import { BlogModel, TrendModel, ExternalSiteModel, ScheduledPostModel, UserModel } from "./models";
 
 export interface IStorage {
+  // Users
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  
   // Blogs
   getBlogs(): Promise<Blog[]>;
   getBlog(id: number): Promise<Blog | undefined>;
@@ -40,6 +44,17 @@ export interface IStorage {
 }
 
 export class MongoStorage implements IStorage {
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const doc = await UserModel.findOne({ username });
+    return doc ? (doc.toObject() as User) : undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const user = new UserModel(insertUser);
+    await user.save();
+    return user.toObject() as User;
+  }
+
   async getBlogs(): Promise<Blog[]> {
     try {
       const docs = await BlogModel.find().sort({ createdAt: -1 });
@@ -187,6 +202,16 @@ export class MongoStorage implements IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [newUser] = await db.insert(users).values(insertUser).returning();
+    return newUser;
+  }
+
   async getBlogs(): Promise<Blog[]> {
     return await db.select().from(blogs).orderBy(desc(blogs.createdAt));
   }
@@ -324,10 +349,12 @@ export class DatabaseStorage implements IStorage {
 }
 
 export class MemStorage implements IStorage {
+  private users: Map<number, User>;
   private blogs: Map<number, Blog>;
   private trends: Map<number, Trend>;
   private externalSites: Map<number, ExternalSite>;
   private scheduledPosts: Map<number, ScheduledPost>;
+  private userId: number;
   private blogId: number;
   private trendId: number;
   private siteId: number;
@@ -336,10 +363,12 @@ export class MemStorage implements IStorage {
   private storagePath: string;
 
   constructor() {
+    this.users = new Map();
     this.blogs = new Map();
     this.trends = new Map();
     this.externalSites = new Map();
     this.scheduledPosts = new Map();
+    this.userId = 1;
     this.blogId = 1;
     this.trendId = 1;
     this.siteId = 1;
@@ -379,6 +408,7 @@ export class MemStorage implements IStorage {
   private saveToDisk() {
     try {
       const data = {
+        users: Array.from(this.users.entries()),
         blogs: Array.from(this.blogs.entries()),
         trends: Array.from(this.trends.entries()),
         externalSites: Array.from(this.externalSites.entries()),
@@ -386,7 +416,8 @@ export class MemStorage implements IStorage {
         blogId: this.blogId,
         trendId: this.trendId,
         siteId: this.siteId,
-        postId: this.postId
+        postId: this.postId,
+        userId: this.userId
       };
       fs.writeFileSync(this.storagePath, JSON.stringify(data, null, 2));
     } catch {
@@ -398,6 +429,7 @@ export class MemStorage implements IStorage {
     try {
       if (fs.existsSync(this.storagePath)) {
         const data = JSON.parse(fs.readFileSync(this.storagePath, "utf-8"));
+        this.users = new Map(data.users || []);
         this.blogs = new Map(data.blogs);
         this.trends = new Map(data.trends);
         this.externalSites = new Map(data.externalSites);
@@ -406,8 +438,10 @@ export class MemStorage implements IStorage {
         this.trendId = data.trendId;
         this.siteId = data.siteId;
         this.postId = data.postId;
+        this.userId = data.userId || 1;
         
         // Convert date strings back to Date objects and check for env overrides
+        this.users.forEach(u => u.createdAt = new Date(u.createdAt));
         this.blogs.forEach(b => {
           b.createdAt = new Date(b.createdAt);
           if (b.publishedAt) b.publishedAt = new Date(b.publishedAt);
@@ -436,6 +470,19 @@ export class MemStorage implements IStorage {
     } catch {
       // Silent — disk read failure falls back to empty state
     }
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    this.loadFromDisk();
+    return Array.from(this.users.values()).find(u => u.username === username);
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = this.userId++;
+    const user: User = { ...insertUser, id, createdAt: new Date() };
+    this.users.set(id, user);
+    this.saveToDisk();
+    return user;
   }
 
   async getBlogs(): Promise<Blog[]> {

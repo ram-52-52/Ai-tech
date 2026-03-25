@@ -10,11 +10,74 @@ import { fetchTrends } from "./services/trends";
 import { publishBlog } from "./services/publisher";
 import { uploadFeaturedImageToWordPress } from "./services/wpImageUploader";
 import cron from "node-cron";
+import bcrypt from "bcryptjs";
+
+// Default client ID — used as fallback when no clientId is supplied in a request
+const PRIMARY_CLIENT_ID = "6acbc0de-d5b7-46cc-bf32-a1dc0b3faf59";
+
+export function requireAuth(req: any, res: any, next: any) {
+  if (!req.session?.userId) {
+    return res.status(401).json({ message: "Unauthorized: Please log in." });
+  }
+  next();
+}
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  // --- Auth Routes ---
+  app.get("/api/me", async (req: any, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ message: "Not logged in" });
+    }
+    const user = await storage.getUserByUsername("admin"); // or by ID if implemented
+    // Since we only have username in session currently via ID, let's just return what we have:
+    res.json({ id: req.session.userId, clientId: req.session.clientId });
+  });
+
+  app.post("/api/register", async (req, res) => {
+    try {
+      const { username, password, clientId } = req.body;
+      if (!username || !password || !clientId) return res.status(400).json({ message: "Missing username, password, or clientId" });
+      const existing = await storage.getUserByUsername(username);
+      if (existing) return res.status(400).json({ message: "User already exists" });
+      
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await storage.createUser({ username, password: hashedPassword, clientId });
+      
+      // Auto-login upon registration
+      req.session.userId = user.id;
+      req.session.clientId = user.clientId;
+      res.status(201).json({ message: "Registered", user: { id: user.id, username: user.username, clientId: user.clientId } });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      const user = await storage.getUserByUsername(username);
+      if (!user) return res.status(401).json({ message: "Invalid credentials" });
+      
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) return res.status(401).json({ message: "Invalid credentials" });
+      
+      req.session.userId = user.id;
+      req.session.clientId = user.clientId;
+      res.json({ message: "Logged in", user: { id: user.id, username: user.username, clientId: user.clientId } });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.json({ message: "Logged out" });
+    });
+  });
 
   // --- Blog Routes ---
 
@@ -98,9 +161,12 @@ export async function registerRoutes(
     res.json(blog);
   });
 
-  app.post(api.blogs.create.path, async (req, res) => {
+  app.post(api.blogs.create.path, requireAuth, async (req: any, res) => {
     try {
-      const input = api.blogs.create.input.parse(req.body);
+      // Prioritize session clientId, default to PRIMARY_CLIENT_ID if missing
+      const requestClientId = req.session?.clientId || PRIMARY_CLIENT_ID;
+      const body = { clientId: requestClientId, ...req.body };
+      const input = api.blogs.create.input.parse(body);
       const blog = await storage.createBlog(input);
       res.status(201).json(blog);
     } catch (err) {
@@ -111,7 +177,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.blogs.update.path, async (req, res) => {
+  app.put(api.blogs.update.path, requireAuth, async (req, res) => {
     try {
       const input = api.blogs.update.input.parse(req.body);
       const blog = await storage.updateBlog(Number(req.params.id), input);
@@ -124,7 +190,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.blogs.delete.path, async (req, res) => {
+  app.delete(api.blogs.delete.path, requireAuth, async (req, res) => {
     const blogId = Number(req.params.id);
 
     // 1. Fetch the blog record BEFORE deleting it, so we have image URLs
@@ -160,9 +226,10 @@ export async function registerRoutes(
 
   // --- AI Generation Route ---
 
-  app.post(api.blogs.generate.path, async (req, res) => {
+  app.post(api.blogs.generate.path, requireAuth, async (req: any, res) => {
     try {
       let topic = req.body.topic;
+      const clientId: string = req.session?.clientId || req.body.clientId || PRIMARY_CLIENT_ID;
       
       if (!topic) {
          // Fetch trends if no topic provided
@@ -175,14 +242,14 @@ export async function registerRoutes(
       }
 
       const generatedBlog = await generateBlogPost(topic);
-      const blog = await storage.createBlog(generatedBlog);
+      const blog = await storage.createBlog({ ...generatedBlog, clientId });
       res.status(201).json(blog);
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to generate blog" });
     }
   });
 
-  app.post("/api/blogs/:id/regenerate-full", async (req, res) => {
+  app.post("/api/blogs/:id/regenerate-full", requireAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const { title: bodyTitle } = req.body;
@@ -222,7 +289,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/blogs/:id/regenerate-image", async (req, res) => {
+  app.post("/api/blogs/:id/regenerate-image", requireAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const { title: bodyTitle } = req.body;

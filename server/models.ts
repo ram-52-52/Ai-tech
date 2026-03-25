@@ -100,3 +100,20 @@ ScheduledPostSchema.pre("save", async function(this: any) {
 });
 
 export const ScheduledPostModel = mongoose.model("ScheduledPost", ScheduledPostSchema);
+
+// User Schema
+const UserSchema = new Schema({
+  id: { type: Number, unique: true },
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  clientId: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+UserSchema.pre("save", async function(this: any) {
+  if (this.isNew && !this.id) {
+    this.id = await getNextSequenceValue("userId");
+  }
+});
+
+export const UserModel = mongoose.model("User", UserSchema);

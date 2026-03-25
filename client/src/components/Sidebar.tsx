@@ -1,10 +1,13 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, FileText, Sparkles, TrendingUp, Settings } from "lucide-react";
+import { LayoutDashboard, FileText, Sparkles, TrendingUp, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
 
 export function Sidebar() {
   const [location] = useLocation();
+  const { user, logout } = useAuth();
 
   const links = [
     { href: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -54,15 +57,25 @@ export function Sidebar() {
         </nav>
       </div>
 
-      <div className="mt-auto p-6 border-t border-border/50">
+      <div className="mt-auto p-6 border-t border-border/50 space-y-4">
+        <Button 
+          variant="ghost" 
+          className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-500/10"
+          onClick={logout}
+        >
+          <LogOut className="w-5 h-5 mr-3" />
+          Logout
+        </Button>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center border border-border shrink-0">
-              <span className="text-xs font-bold text-muted-foreground">JD</span>
+              <span className="text-xs font-bold text-muted-foreground">
+                {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
+              </span>
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium text-foreground truncate">John Doe</p>
-              <p className="text-xs text-muted-foreground truncate">Pro Plan</p>
+              <p className="text-sm font-medium text-foreground truncate">{user?.username || 'Admin'}</p>
+              <p className="text-xs text-muted-foreground truncate">Dashboard</p>
             </div>
           </div>
           <ThemeToggle />

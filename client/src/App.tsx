@@ -17,18 +17,39 @@ import { PageTransition } from "@/components/PageTransition";
 import { AuroraBackground } from "@/components/AuroraBackground";
 
 import { MobileHeader } from "@/components/MobileHeader";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import Login from "@/pages/Login";
+import { Loader2 } from "lucide-react";
+import { useLocation } from "wouter";
 
 function Router() {
+  const { user, isLoading } = useAuth();
+  const [location, setLocation] = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-primary">
+        <Loader2 className="w-10 h-10 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user && location !== "/login") {
+    setLocation("/login");
+    return null;
+  }
+
   return (
     <div className="min-h-screen flex text-foreground relative selection:bg-primary/30">
       <AuroraBackground />
-      <Sidebar />
-      <MobileHeader />
-      <main className="flex-1 w-full pt-20 px-4 md:pt-8 md:pr-8 md:pl-[300px] lg:pr-12 lg:pl-[320px] pb-12 overflow-x-hidden relative z-0">
+      {user && <Sidebar />}
+      {user && <MobileHeader />}
+      <main className={`flex-1 w-full pb-12 overflow-x-hidden relative z-0 ${user ? 'pt-20 px-4 md:pt-8 md:pr-8 md:pl-[300px] lg:pr-12 lg:pl-[320px]' : 'flex items-center justify-center'}`}>
         <div className="max-w-7xl mx-auto h-full w-full">
           <AnimatePresence mode="wait">
             <PageTransition>
               <Switch>
+                <Route path="/login" component={Login} />
                 <Route path="/" component={Dashboard} />
                 <Route path="/blogs" component={BlogList} />
                 <Route path="/blogs/:id" component={EditBlog} />
@@ -51,7 +72,9 @@ function App() {
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <QueryClientProvider client={queryClient}>
         <Toaster />
-        <Router />
+        <AuthProvider>
+          <Router />
+        </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

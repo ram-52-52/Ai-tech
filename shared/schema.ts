@@ -48,6 +48,14 @@ export const scheduledPosts = pgTable("scheduled_posts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").unique().notNull(),
+  password: text("password").notNull(),
+  clientId: text("client_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertBlogSchema = createInsertSchema(blogs).omit({ 
   id: true, 
   createdAt: true, 
@@ -55,6 +63,11 @@ export const insertBlogSchema = createInsertSchema(blogs).omit({
 });
 
 export const insertExternalSiteSchema = createInsertSchema(externalSites).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
 });
@@ -72,3 +85,5 @@ export type ExternalSite = typeof externalSites.$inferSelect;
 export type InsertExternalSite = z.infer<typeof insertExternalSiteSchema>;
 export type ScheduledPost = typeof scheduledPosts.$inferSelect;
 export type InsertScheduledPost = z.infer<typeof insertScheduledPostSchema>;
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;

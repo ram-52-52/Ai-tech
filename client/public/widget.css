@@ -1,135 +1,156 @@
-/* 1. Reset & Structural Foundations */
+/* =============================================
+   AI-Tech Blog Widget — Neutral Adaptive CSS
+   Inherits all theming from the host site.
+   ============================================= */
+
+/* 1. Container Reset — inherits everything from host */
 #ai-tech-blog-feed {
-  font-family: inherit;
-  color: inherit;
-  background-color: transparent;
-  line-height: 1.5;
+  all: revert;
+  display: block;
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
+  box-sizing: border-box;
+  line-height: 1.6;
 }
 
 #ai-tech-blog-feed * {
   box-sizing: border-box;
+  font-family: inherit !important;
+  color: inherit !important;
 }
 
-/* Loader & Messages */
-.at-loader, .at-empty, .at-error {
+/* 2. Loader / Empty / Error states */
+.at-loader,
+.at-empty,
+.at-error {
   padding: 3rem;
   text-align: center;
-  color: inherit;
   font-style: italic;
-  opacity: 0.7;
+  opacity: 0.65;
 }
 
-/* 2. Blog List View (Card Grid) */
+/* 3. Blog List Grid */
 .at-blog-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 2.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2rem;
   padding: 1.5rem 0;
+  list-style: none !important;
+  margin: 0 !important;
 }
 
+/* 4. Blog Card */
 .at-blog-card {
   display: flex;
   flex-direction: column;
-  background-color: transparent;
-  border: 1px solid currentColor;
-  border-radius: 12px;
+  /* border with 0.1 opacity matching the host text color */
+  border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  border-radius: 10px;
   overflow: hidden;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-  opacity: 0.9;
+  background: transparent;
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .at-blog-card:hover {
-  transform: translateY(-4px);
-  opacity: 1;
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, currentColor 30%, transparent);
 }
 
+/* 5. Card Image */
 .at-card-image {
-  aspect-ratio: 16/9;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
+  background: transparent;
 }
 
 .at-card-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
   transition: transform 0.3s ease;
 }
 
+.at-blog-card:hover .at-card-image img {
+  transform: scale(1.03);
+}
+
+/* 6. Card Content */
 .at-card-content {
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.6rem;
   flex-grow: 1;
 }
 
 .at-card-meta {
-  font-size: 0.85rem;
-  opacity: 0.6;
+  font-size: 0.78rem !important;
+  opacity: 0.55;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: inherit;
+  letter-spacing: 0.06em;
 }
 
 .at-card-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-  line-height: 1.3;
-  color: inherit;
+  font-size: 1.2rem !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+  line-height: 1.35;
 }
 
 .at-card-description {
-  font-size: inherit;
-  opacity: 0.8;
-  margin: 0;
+  font-size: 0.9rem !important;
+  opacity: 0.75;
+  margin: 0 !important;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  color: inherit;
 }
 
+/* 7. Read More Link */
 .at-read-more {
-  margin-top: auto;
-  font-weight: 700;
-  text-decoration: underline;
-  font-size: 0.9rem;
-  letter-spacing: 0.05em;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  color: inherit;
-  opacity: 0.8;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.75rem;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em;
+  text-decoration: underline !important;
+  opacity: 0.75;
+  cursor: pointer;
+  background: none !important;
+  border: none !important;
 }
 
 .at-read-more:hover {
   opacity: 1;
 }
 
-/* 3. Detail View Styling */
+/* 8. Detail View — centers within host's natural flow, respects host max-width */
 .at-blog-detail {
-  max-width: 800px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 2rem 15px;
-  color: inherit;
+  gap: 0.75rem;
+  padding: 1.5rem 0;
+  width: 100%;
+  max-width: 780px;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
 .at-back-link {
-  text-decoration: underline;
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: inherit;
+  display: inline-block;
+  text-decoration: underline !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
   opacity: 0.6;
   cursor: pointer;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
+  background: none !important;
+  border: none !important;
 }
 
 .at-back-link:hover {
@@ -137,63 +158,96 @@
 }
 
 .at-detail-meta {
-  font-size: 0.9rem;
-  opacity: 0.6;
+  font-size: 0.82rem !important;
+  opacity: 0.55;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+}
+
+.at-topic {
+  font-weight: 600 !important;
 }
 
 .at-detail-title {
-  font-size: 2.5rem;
-  font-weight: 800;
-  margin: 0.5rem 0 1.5rem 0;
-  line-height: 1.2;
-  color: inherit;
+  font-size: clamp(1.6rem, 4vw, 2.4rem) !important;
+  font-weight: 800 !important;
+  margin: 0.5rem 0 0.75rem !important;
+  line-height: 1.25;
 }
 
+/* 9. Detail Image */
 .at-detail-image {
   width: 100%;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
-  margin: 1rem 0 2rem 0;
+  margin: 0.75rem 0 1.5rem;
 }
 
 .at-detail-image img {
   width: 100%;
-  max-height: 450px;
+  max-height: 420px;
   object-fit: cover;
   display: block;
 }
 
+/* 10. Detail Content — inherits typography from host */
 .at-detail-content {
-  font-size: inherit;
-  line-height: 1.8;
-  color: inherit;
+  font-size: inherit !important;
+  line-height: 1.85;
 }
 
-.at-detail-content h1, 
-.at-detail-content h2, 
-.at-detail-content h3 {
-  margin-top: 2.5rem;
-  margin-bottom: 1.25rem;
+.at-detail-content h1,
+.at-detail-content h2,
+.at-detail-content h3,
+.at-detail-content h4 {
+  font-family: inherit !important;
+  color: inherit !important;
+  margin-top: 2rem !important;
+  margin-bottom: 1rem !important;
   line-height: 1.3;
 }
 
 .at-detail-content p {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem !important;
 }
 
+.at-detail-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+  margin: 1.5rem auto;
+}
+
+.at-detail-content a {
+  text-decoration: underline !important;
+  opacity: 0.85;
+}
+
+/* 11. Tags */
 .at-detail-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.5rem;
   margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 1px solid currentColor;
+  padding-top: 1.5rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);
 }
 
 .at-tag {
-  font-size: 0.8rem;
-  opacity: 0.6;
-  color: inherit;
+  font-size: 0.78rem !important;
+  opacity: 0.55;
+  padding: 0.2rem 0.1rem;
+}
+
+/* 12. Responsive */
+@media (max-width: 640px) {
+  .at-blog-list {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .at-detail-title {
+    font-size: 1.5rem !important;
+  }
 }

@@ -1,8 +1,11 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
+import session from "express-session";
+import createMemoryStore from "memorystore";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { BlogModel } from "./models";
 
 import { storage } from "./storage";
 
@@ -15,9 +18,12 @@ const dynamicCors = cors({
     if (!origin) return callback(null, true);
 
     try {
-      // 1. ONLY allow your primary dashboard (No localhost, no hardcoded clients)
+      // 1. ONLY allow your primary dashboard and local development
       const allowedStaticOrigins = [
-        "https://ai-tech-5l4y.onrender.com"
+        "https://ai-tech-5l4y.onrender.com",
+        "http://localhost:5000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5000"
       ];
 
       if (allowedStaticOrigins.includes(origin)) {
@@ -44,11 +50,35 @@ const dynamicCors = cors({
 // IMPORTANT FIX: Apply CORS ONLY to API routes, protecting static assets
 app.use("/api", dynamicCors);
 
+// Session Setup
+const MemoryStore = createMemoryStore(session);
+app.use(
+  session({
+    store: new MemoryStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    }),
+    secret: process.env.SESSION_SECRET || "ai-tech-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 86400000 * 7, // 7 days
+      secure: process.env.NODE_ENV === "production" ? false : false // Left false for generic proxy setups
+    },
+  })
+);
+
 const httpServer = createServer(app);
 
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
+  }
+}
+
+declare module "express-session" {
+  interface SessionData {
+    userId?: number;
+    clientId?: string;
   }
 }
 
@@ -91,6 +121,20 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Manual Fix: One-time script to backfill null clientIds to E-mart ID
+  try {
+    const FIXED_CLIENT_ID = '6acbc0de-d5b7-46cc-bf32-a1dc0b3faf59';
+    const result = await BlogModel.updateMany(
+      { $or: [{ clientId: null }, { clientId: { $exists: false } }, { clientId: "" }] },
+      { $set: { clientId: FIXED_CLIENT_ID } }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`[Backfill] Updated ${result.modifiedCount} blogs with the E-mart clientId.`);
+    }
+  } catch (err) {
+    console.error(`[Backfill] Failed to update missing client IDs:`, err);
+  }
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
