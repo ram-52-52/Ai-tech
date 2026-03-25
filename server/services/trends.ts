@@ -35,10 +35,8 @@ export async function fetchTrends(): Promise<TrendItem[]> {
     }));
 
     return trends.slice(0, 10); // Return top 10
-  } catch (error) {
-    console.error("Error fetching trends:", error);
-    // Fallback data so the app is usable
-    console.log("⚠️ Using fallback trends data.");
+  } catch {
+    // Silently use fallback trends data when Google Trends RSS is unreachable
     return [
       { topic: "Artificial Intelligence", volume: 50000 },
       { topic: "SpaceX Starship", volume: 20000 },

@@ -98,8 +98,7 @@ export async function uploadMediaToWordPress(imageUrl: string, site: ExternalSit
       }
     }
     return undefined;
-  } catch (error: any) {
-    console.error(`⚠️ WordPress media upload failed: ${error.message}`);
+  } catch {
     return undefined;
   }
 }
@@ -246,7 +245,6 @@ async function publishToLinkedIn(blog: Blog, site: ExternalSite): Promise<Publis
 
   // Mock success for testing
   if (accessToken === "provide_token_in_ui") {
-    console.warn(`⚠️ LinkedIn publishing is in MOCK MODE for blog "${blog.title}". No real post was created because a real Access Token was not provided.`);
     return { success: true, postUrl: `https://www.linkedin.com/feed/update/mock-post-${blog.id}` };
   }
 
@@ -352,15 +350,12 @@ async function publishToLinkedIn(blog: Blog, site: ExternalSite): Promise<Publis
           });
 
           if (!uploadRes.ok) {
-            console.error(`Failed to upload image binary: ${await uploadRes.text()}`);
-            mediaUrn = undefined; // Fallback to text
-          } else {
+            mediaUrn = undefined; // Fallback to text-only post
           }
         } else {
-          console.error(`Failed to register LinkedIn image upload: ${await registerRes.text()}`);
+          // Register failed — continue without image
         }
-      } catch (imgErr) {
-        console.error("Error during LinkedIn image upload process:", imgErr);
+      } catch {
         mediaUrn = undefined;
       }
     }

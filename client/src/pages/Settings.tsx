@@ -351,15 +351,16 @@ export default function Settings() {
                             <DialogTitle className="text-xl md:text-2xl font-display font-black text-slate-900 dark:text-slate-50">Embed Widget Snippet</DialogTitle>
                           </DialogHeader>
                           <div className="space-y-6 py-4">
-                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-xl flex flex-col md:flex-row items-center md:items-start gap-3">
-                              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-800/50 flex items-center justify-center shrink-0">
-                                <LinkIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-6 rounded-2xl space-y-4">
+                              <h3 className="font-display font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                                <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                Installation Steps
+                              </h3>
+                              <div className="space-y-3 text-sm text-blue-800/80 dark:text-blue-300 leading-relaxed">
+                                <p><span className="font-bold text-blue-900 dark:text-blue-100">Step 1:</span> Copy the code block below.</p>
+                                <p><span className="font-bold text-blue-900 dark:text-blue-100">Step 2:</span> Paste the <code className="bg-blue-100 dark:bg-blue-800/50 px-1.5 py-0.5 rounded">&lt;div ...&gt;</code> tag exactly where you want the blog feed to appear on your webpage.</p>
+                                <p><span className="font-bold text-blue-900 dark:text-blue-100">Step 3:</span> Paste the <code className="bg-blue-100 dark:bg-blue-800/50 px-1.5 py-0.5 rounded">&lt;script ...&gt;</code> tag near the bottom of your page, just before the closing <code className="bg-blue-100 dark:bg-blue-800/50 px-1.5 py-0.5 rounded">&lt;/body&gt;</code> tag.</p>
                               </div>
-                              <p className="text-sm text-blue-800/80 dark:text-blue-300 leading-relaxed text-center md:text-left">
-                                Copy and paste this code into your external website's HTML where you want the feed to appear.
-                                <br />
-                                <span className="font-bold">Important:</span> This will only work on <code className="bg-blue-100 dark:bg-blue-800/50 px-1.5 py-0.5 rounded text-blue-900 dark:text-blue-200 break-all">{site.siteUrl}</code>.
-                              </p>
                             </div>
 
                             <div className="relative group rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-lg bg-[#0d1117]">
@@ -375,23 +376,7 @@ export default function Settings() {
                                   variant="ghost"
                                   className="h-8 text-xs font-bold text-primary hover:bg-primary/10 transition-all gap-2"
                                   onClick={() => {
-                                    const code = `<div id="autoblog-feed" class="autoblog-feed-container"></div>
-<script>
-  fetch('${window.location.origin}/api/v1/feed/${site.clientId}')
-    .then(res => res.json())
-    .then(blogs => {
-      const container = document.getElementById('autoblog-feed');
-      blogs.forEach(blog => {
-        container.innerHTML += \`
-          <article class="autoblog-post" style="margin-bottom: 2rem;">
-            <h2 class="autoblog-title" style="margin-bottom: 0.5rem; font-size: 1.5rem;">\${blog.title}</h2>
-            \${blog.imageUrl ? \`<img class="autoblog-thumbnail" src="\${blog.imageUrl}" alt="\${blog.title}" style="width: 100%; border-radius: 8px; margin-bottom: 1rem;" loading="lazy" />\` : ''}
-            <div class="autoblog-content" style="line-height: 1.6;">\${blog.content}</div>
-          </article>
-          <hr class="autoblog-divider" style="border: 0; border-top: 1px solid #eee; margin: 2rem 0;" />\`;
-      });
-    }).catch(err => console.error("AutoBlog Widget Error:", err));
-</script>`;
+                                    const code = `<div id="ai-tech-blog-feed" data-client-id="${site.clientId}"></div>\n<script src="https://ai-tech-5l4y.onrender.com/blog-widget.js"></script>`;
                                     navigator.clipboard.writeText(code);
                                     toast({ title: "Copied!", description: "Snippet copied to clipboard" });
                                   }}
@@ -402,23 +387,8 @@ export default function Settings() {
                               </div>
                               <div className="p-4 md:p-6 overflow-x-auto">
                                 <pre className="font-mono text-[10px] md:text-sm leading-relaxed text-slate-300 whitespace-pre">
-{`<div id="autoblog-feed" class="autoblog-feed-container"></div>
-<script>
-  fetch('${window.location.origin}/api/v1/feed/${site.clientId}')
-    .then(res => res.json())
-    .then(blogs => {
-      const container = document.getElementById('autoblog-feed');
-      blogs.forEach(blog => {
-        container.innerHTML += \`
-          <article class="autoblog-post" style="margin-bottom: 2rem;">
-            <h2 class="autoblog-title">\${blog.title}</h2>
-            \${blog.imageUrl ? \`<img class="autoblog-thumbnail" src="\${blog.imageUrl}" ... />\` : ''}
-            <div class="autoblog-content">\${blog.content}</div>
-          </article>
-          <hr class="autoblog-divider" />\`;
-      });
-    }).catch(err => console.error("AutoBlog Widget Error:", err));
-</script>`}
+{`<div id="ai-tech-blog-feed" data-client-id="${site.clientId}"></div>
+<script src="https://ai-tech-5l4y.onrender.com/blog-widget.js"></script>`}
                                 </pre>
                               </div>
                             </div>

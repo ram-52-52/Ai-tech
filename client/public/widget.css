@@ -1,0 +1,199 @@
+/* 1. Reset & Structural Foundations */
+#ai-tech-blog-feed {
+  font-family: inherit;
+  color: inherit;
+  background-color: transparent;
+  line-height: 1.5;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+#ai-tech-blog-feed * {
+  box-sizing: border-box;
+}
+
+/* Loader & Messages */
+.at-loader, .at-empty, .at-error {
+  padding: 3rem;
+  text-align: center;
+  color: inherit;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* 2. Blog List View (Card Grid) */
+.at-blog-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 2.5rem;
+  padding: 1.5rem 0;
+}
+
+.at-blog-card {
+  display: flex;
+  flex-direction: column;
+  background-color: transparent;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  opacity: 0.9;
+}
+
+.at-blog-card:hover {
+  transform: translateY(-4px);
+  opacity: 1;
+}
+
+.at-card-image {
+  aspect-ratio: 16/9;
+  overflow: hidden;
+}
+
+.at-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.at-card-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex-grow: 1;
+}
+
+.at-card-meta {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: inherit;
+}
+
+.at-card-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.3;
+  color: inherit;
+}
+
+.at-card-description {
+  font-size: inherit;
+  opacity: 0.8;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: inherit;
+}
+
+.at-read-more {
+  margin-top: auto;
+  font-weight: 700;
+  text-decoration: underline;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: inherit;
+  opacity: 0.8;
+}
+
+.at-read-more:hover {
+  opacity: 1;
+}
+
+/* 3. Detail View Styling */
+.at-blog-detail {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 2rem 15px;
+  color: inherit;
+}
+
+.at-back-link {
+  text-decoration: underline;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+
+.at-back-link:hover {
+  opacity: 1;
+}
+
+.at-detail-meta {
+  font-size: 0.9rem;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.at-detail-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0.5rem 0 1.5rem 0;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.at-detail-image {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 1rem 0 2rem 0;
+}
+
+.at-detail-image img {
+  width: 100%;
+  max-height: 450px;
+  object-fit: cover;
+  display: block;
+}
+
+.at-detail-content {
+  font-size: inherit;
+  line-height: 1.8;
+  color: inherit;
+}
+
+.at-detail-content h1, 
+.at-detail-content h2, 
+.at-detail-content h3 {
+  margin-top: 2.5rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.3;
+}
+
+.at-detail-content p {
+  margin-bottom: 1.5rem;
+}
+
+.at-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid currentColor;
+}
+
+.at-tag {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  color: inherit;
+}

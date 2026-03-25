@@ -16,11 +16,14 @@ import { AnimatePresence } from "framer-motion";
 import { PageTransition } from "@/components/PageTransition";
 import { AuroraBackground } from "@/components/AuroraBackground";
 
+import { MobileHeader } from "@/components/MobileHeader";
+
 function Router() {
   return (
     <div className="min-h-screen flex text-foreground relative selection:bg-primary/30">
       <AuroraBackground />
       <Sidebar />
+      <MobileHeader />
       <main className="flex-1 w-full pt-20 px-4 md:pt-8 md:pr-8 md:pl-[300px] lg:pr-12 lg:pl-[320px] pb-12 overflow-x-hidden relative z-0">
         <div className="max-w-7xl mx-auto h-full w-full">
           <AnimatePresence mode="wait">

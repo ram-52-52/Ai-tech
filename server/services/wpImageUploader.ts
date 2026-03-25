@@ -47,7 +47,6 @@ export async function uploadFeaturedImageToWordPress(
       throw new Error("No imageUrl provided to upload.");
     }
 
-    console.log(`[Uploader] Downloading image from: ${imageUrl}`);
     let imageBuffer: Buffer;
     
     // Check if the URL is absolute or relative
@@ -65,7 +64,6 @@ export async function uploadFeaturedImageToWordPress(
     // ------------------------------------------------------------------------
     // 3. Upload raw buffer to WordPress Media REST API
     // ------------------------------------------------------------------------
-    console.log(`[WordPress] Uploading image to API ${cleanWpUrl}/wp-json/wp/v2/media`);
 
     // Create a URL-safe filename
     const sanitizedTitle = blogTitle
@@ -102,32 +100,12 @@ export async function uploadFeaturedImageToWordPress(
       throw new Error("WordPress upload succeeded but did not return a valid Media ID.");
     }
 
-    console.log(`[WordPress] Upload successful! Media ID: ${mediaId}`);
     return mediaId;
 
   } catch (error: any) {
-    console.error(
-      "[Error in uploadFeaturedImageToWordPress]:",
-      error.message || error
-    );
-
-    // Enhanced Axios error debugging for WordPress 
-    if (error.response) {
-      console.error("-> WordPress Response Status:", error.response.status);
-      console.error(
-        "-> WordPress Response Data:",
-        error.response.data instanceof Buffer
-          ? error.response.data.toString()
-          : error.response.data
-      );
-      
-      if (error.response.status === 401 || error.response.status === 403) {
-        throw new Error(
-          "WordPress Authentication Failed. Verify WP_USERNAME and WP_APPLICATION_PASSWORD, and ensure Application Passwords are enabled on your site."
-        );
-      }
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      throw new Error("WordPress Authentication Failed. Verify WP_USERNAME and WP_APPLICATION_PASSWORD.");
     }
-
     throw new Error(`Failed to upload feature image: ${error.message}`);
   }
 }

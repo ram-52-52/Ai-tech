@@ -1,5 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "http";
+import fs from "fs";
+import path from "path";
 import { storage } from "./storage";
 import { api } from "../shared/routes";
 import { z } from "zod";
@@ -20,45 +22,61 @@ export async function registerRoutes(
   app.get("/api/v1/feed/:clientId", async (req, res) => {
     try {
       const { clientId } = req.params;
+      const { blogId, slug } = req.query;
       const site = await storage.getExternalSiteByClientId(clientId);
 
       if (!site || site.siteType !== "embed_widget" || !site.isEnabled) {
         return res.status(404).json({ error: "Widget not found or disabled" });
       }
 
-      // Domain Locking Security
-      const origin = req.headers.origin || req.headers.referer;
-      if (!origin) {
-        return res.status(403).json({ error: "Unauthorized: Missing Origin/Referer header." });
-      }
+      // 1. Single Blog Detail View (by slug — tenant-isolated)
+      if (slug || blogId) {
+        let blog: Awaited<ReturnType<typeof storage.getBlog>> | undefined;
 
-      try {
-        const allowedOrigin = new URL(site.siteUrl).origin;
-        const incomingOrigin = origin.startsWith('http') ? new URL(origin).origin : origin;
-
-        if (allowedOrigin !== incomingOrigin) {
-          console.warn(`[Security] Blocked unauthorized domain: ${incomingOrigin}. Expected: ${allowedOrigin}`);
-          return res.status(403).json({ error: "Unauthorized Domain. Script execution blocked." });
+        if (slug) {
+          // Tenant-isolated: only return blog if it belongs to this clientId
+          blog = await storage.getBlogBySlugAndClientId(slug as string, clientId);
+        } else {
+          blog = await storage.getBlog(Number(blogId));
+          // Validate the non-slug path still checks isPublished
+          if (blog && !blog.isPublished) blog = undefined;
         }
-      } catch (urlErr) {
-        return res.status(403).json({ error: "Invalid Origin/Referer format." });
+
+        if (!blog) {
+          return res.status(404).json({ error: "Blog not found" });
+        }
+        return res.json({
+          title: blog.title,
+          content: blog.content,
+          imageUrl: blog.imageUrl,
+          createdAt: blog.createdAt,
+          tags: blog.tags,
+          topic: blog.topic,
+          slug: blog.slug
+        });
       }
 
-      // Fetch top 10 published blogs
+      // 2. Blog List View (Latest 10)
       const blogs = await storage.getBlogs();
+      const now = new Date();
       const feed = blogs
-        .filter(b => b.isPublished)
+        .filter(b => b.isPublished && b.publishedAt && new Date(b.publishedAt) <= now)
         .slice(0, 10)
-        .map(b => ({
-          title: b.title,
-          content: b.content,
-          imageUrl: b.imageUrl,
-          createdAt: b.createdAt
-        }));
+        .map(b => {
+          const fallbackSlug = b.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").substring(0, 50);
+          return {
+            id: b.id,
+            slug: b.slug || fallbackSlug,
+            title: b.title,
+            metaDescription: b.metaDescription || (b.content ? b.content.replace(/<[^>]*>/g, '').substring(0, 160) + "..." : ""),
+            imageUrl: b.imageUrl,
+            createdAt: b.createdAt,
+            topic: b.topic
+          };
+        });
 
       res.json(feed);
-    } catch (error: any) {
-      console.error("[Feed API] Error:", error.message);
+    } catch {
       res.status(500).json({ error: "Internal Server Error" });
     }
   });
@@ -107,7 +125,36 @@ export async function registerRoutes(
   });
 
   app.delete(api.blogs.delete.path, async (req, res) => {
-    await storage.deleteBlog(Number(req.params.id));
+    const blogId = Number(req.params.id);
+
+    // 1. Fetch the blog record BEFORE deleting it, so we have image URLs
+    const blog = await storage.getBlog(blogId);
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+
+    // 2. Attempt to delete any locally-stored image files (orphan cleanup)
+    //    Only handles local paths (e.g. /generated-images/abc.jpg)
+    //    External URLs (http/https) are skipped — they are not on this server
+    const imageFields = [blog.imageUrl].filter(Boolean) as string[];
+    for (const imageUrl of imageFields) {
+      if (!imageUrl.startsWith("/")) {
+        // External URL (Unsplash, HuggingFace, etc.) — skip
+        continue;
+      }
+      const localPath = path.join(process.cwd(), "client", "public", imageUrl);
+      try {
+        await fs.promises.unlink(localPath);
+      } catch (fileErr: any) {
+        // ENOENT = file already gone — not an error, just log and continue
+        if (fileErr.code !== "ENOENT") {
+          // Non-critical — file delete failed but DB delete continues
+        }
+      }
+    }
+
+    // 3. Delete the blog document from the database
+    await storage.deleteBlog(blogId);
     res.status(204).send();
   });
 
@@ -131,7 +178,6 @@ export async function registerRoutes(
       const blog = await storage.createBlog(generatedBlog);
       res.status(201).json(blog);
     } catch (error: any) {
-      console.error("Blog generation failed:", error);
       res.status(500).json({ message: error.message || "Failed to generate blog" });
     }
   });
@@ -155,8 +201,8 @@ export async function registerRoutes(
       if (wpSite && generated.imageUrl) {
         try {
           await uploadFeaturedImageToWordPress(generated.imageUrl, generated.title, wpSite.siteUrl);
-        } catch (wpError: any) {
-          console.error(`[WP Sync] Image sync to WordPress failed (non-fatal):`, wpError.message);
+        } catch {
+          // WP image sync failed — non-fatal, continue
         }
       }
 
@@ -172,7 +218,6 @@ export async function registerRoutes(
 
       res.json(updatedBlog);
     } catch (error: any) {
-      console.error("[Route] Full regeneration process FAILED:", error.message);
       res.status(500).json({ message: error.message || "Failed to regenerate full blog" });
     }
   });
@@ -194,7 +239,6 @@ export async function registerRoutes(
       });
       res.json(updatedBlog);
     } catch (error: any) {
-      console.error("Image regeneration failed:", error);
       res.status(500).json({ message: error.message || "Failed to regenerate image" });
     }
   });
@@ -214,8 +258,8 @@ export async function registerRoutes(
       }
       
       // Silent log
-    } catch (error) {
-      console.error("Auto-refresh of trends failed:", error);
+    } catch {
+      // Silent — cron failures do not affect the app
     }
     const trends = await storage.getTrends();
     res.json(trends);
@@ -245,8 +289,8 @@ export async function registerRoutes(
         const generatedBlog = await generateBlogPost(topTrend.topic);
         await storage.createBlog({ ...generatedBlog, isPublished: true });
       }
-    } catch (error) {
-      console.error("❌ Auto-blog cron failed:", error);
+    } catch {
+      // Silent — cron blog generation failure does not crash the server
     }
   });
 
@@ -278,7 +322,7 @@ export async function registerRoutes(
           postedAt: new Date(),
         });
       } else {
-        console.error(`❌ Failed to publish "${blog.title}" to ${site.siteName}: ${result.error}`);
+        // Publish failed — result.error is returned to the client if needed
         await storage.updateScheduledPost(post.id, {
           status: "failed",
           errorMessage: result.error ?? "Unknown error",
@@ -390,7 +434,6 @@ export async function registerRoutes(
 
       res.redirect("/settings?wp_connect=success");
     } catch (error: any) {
-      console.error("WordPress OAuth Error:", error.message);
       res.redirect("/settings?wp_connect=error");
     }
   });

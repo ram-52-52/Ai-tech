@@ -11,7 +11,7 @@ export async function getNextSequenceValue(sequenceName: string) {
   const sequenceDocument = await Counter.findByIdAndUpdate(
     sequenceName,
     { $inc: { seq: 1 } },
-    { new: true, upsert: true }
+    { returnDocument: 'after', upsert: true }
   );
   return sequenceDocument.seq;
 }
@@ -19,10 +19,11 @@ export async function getNextSequenceValue(sequenceName: string) {
 // Blog Schema
 const BlogSchema = new Schema({
   id: { type: Number, unique: true },
+  clientId: { type: String, index: true }, // Tenant isolation: links blog to its ExternalSite
   title: { type: String, required: true },
   content: { type: String, required: true },
   topic: { type: String, required: true },
-  slug: { type: String, required: true, unique: true },
+  slug: { type: String, required: true }, // Unique per-client, not globally
   metaDescription: { type: String },
   tags: { type: [String] },
   imageUrl: { type: String },
@@ -31,6 +32,9 @@ const BlogSchema = new Schema({
   publishedAt: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });
+
+// Compound index: slug must be unique per client
+BlogSchema.index({ clientId: 1, slug: 1 }, { unique: true, sparse: true });
 
 BlogSchema.pre("save", async function(this: any) {
   if (this.isNew && !this.id) {

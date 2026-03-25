@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { blogs, trends, externalSites, scheduledPosts, type Blog, type InsertBlog, type Trend, type ExternalSite, type InsertExternalSite, type ScheduledPost, type InsertScheduledPost } from "../shared/schema";
-import { eq, desc, lte, and } from "drizzle-orm";
+import { eq, desc, lte, and, or, like } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
@@ -11,6 +11,7 @@ export interface IStorage {
   getBlogs(): Promise<Blog[]>;
   getBlog(id: number): Promise<Blog | undefined>;
   getBlogBySlug(slug: string): Promise<Blog | undefined>;
+  getBlogBySlugAndClientId(slug: string, clientId: string): Promise<Blog | undefined>;
   createBlog(blog: InsertBlog): Promise<Blog>;
   updateBlog(id: number, blog: Partial<InsertBlog>): Promise<Blog>;
   deleteBlog(id: number): Promise<void>;
@@ -24,6 +25,7 @@ export interface IStorage {
   getExternalSites(): Promise<ExternalSite[]>;
   getExternalSite(id: number): Promise<ExternalSite | undefined>;
   getExternalSiteByClientId(clientId: string): Promise<ExternalSite | undefined>;
+  getExternalSiteByOrigin(origin: string): Promise<ExternalSite | undefined>;
   createExternalSite(site: InsertExternalSite): Promise<ExternalSite>;
   updateExternalSite(id: number, site: Partial<InsertExternalSite>): Promise<ExternalSite>;
   deleteExternalSite(id: number): Promise<void>;
@@ -39,8 +41,18 @@ export interface IStorage {
 
 export class MongoStorage implements IStorage {
   async getBlogs(): Promise<Blog[]> {
-    const docs = await BlogModel.find().sort({ createdAt: -1 });
-    return docs.map(doc => doc.toObject() as Blog);
+    try {
+      const docs = await BlogModel.find().sort({ createdAt: -1 });
+      return docs.map(doc => {
+        const obj = doc.toObject();
+        return {
+          ...obj,
+          id: obj.id || (doc as any).id || 0
+        } as Blog;
+      });
+    } catch {
+      throw new Error("Failed to load blogs");
+    }
   }
 
   async getBlog(id: number): Promise<Blog | undefined> {
@@ -50,6 +62,15 @@ export class MongoStorage implements IStorage {
 
   async getBlogBySlug(slug: string): Promise<Blog | undefined> {
     const doc = await BlogModel.findOne({ slug });
+    return doc ? (doc.toObject() as Blog) : undefined;
+  }
+
+  /**
+   * Tenant-isolated blog fetch: ONLY returns the blog if it belongs to the
+   * specified clientId AND is published. Prevents cross-tenant slug collisions.
+   */
+  async getBlogBySlugAndClientId(slug: string, clientId: string): Promise<Blog | undefined> {
+    const doc = await BlogModel.findOne({ slug, clientId, isPublished: true });
     return doc ? (doc.toObject() as Blog) : undefined;
   }
 
@@ -96,6 +117,19 @@ export class MongoStorage implements IStorage {
 
   async getExternalSiteByClientId(clientId: string): Promise<ExternalSite | undefined> {
     const doc = await ExternalSiteModel.findOne({ clientId });
+    return doc ? (doc.toObject() as ExternalSite) : undefined;
+  }
+
+  async getExternalSiteByOrigin(origin: string): Promise<ExternalSite | undefined> {
+    // Basic normalization: remove trailing slash and protocol for comparison if needed, 
+    // but here we match the full siteUrl stored.
+    const normalizedOrigin = origin.replace(/\/$/, "");
+    const doc = await ExternalSiteModel.findOne({ 
+      $or: [
+        { siteUrl: normalizedOrigin },
+        { siteUrl: normalizedOrigin + "/" }
+      ]
+    });
     return doc ? (doc.toObject() as ExternalSite) : undefined;
   }
 
@@ -167,6 +201,16 @@ export class DatabaseStorage implements IStorage {
     return blog;
   }
 
+  /**
+   * Tenant-isolated blog fetch via Drizzle (SQL backend).
+   */
+  async getBlogBySlugAndClientId(slug: string, clientId: string): Promise<Blog | undefined> {
+    const [blog] = await db.select().from(blogs).where(
+      and(eq(blogs.slug, slug), eq(blogs.clientId, clientId), eq(blogs.isPublished, true))
+    );
+    return blog;
+  }
+
   async createBlog(insertBlog: InsertBlog): Promise<Blog> {
     const [blog] = await db.insert(blogs).values({
         ...insertBlog,
@@ -211,6 +255,17 @@ export class DatabaseStorage implements IStorage {
 
   async getExternalSiteByClientId(clientId: string): Promise<ExternalSite | undefined> {
     const [site] = await db.select().from(externalSites).where(eq(externalSites.clientId, clientId));
+    return site;
+  }
+
+  async getExternalSiteByOrigin(origin: string): Promise<ExternalSite | undefined> {
+    const normalizedOrigin = origin.replace(/\/$/, "");
+    const [site] = await db.select().from(externalSites).where(
+      or(
+        eq(externalSites.siteUrl, normalizedOrigin),
+        eq(externalSites.siteUrl, normalizedOrigin + "/")
+      )
+    );
     return site;
   }
 
@@ -334,8 +389,8 @@ export class MemStorage implements IStorage {
         postId: this.postId
       };
       fs.writeFileSync(this.storagePath, JSON.stringify(data, null, 2));
-    } catch (err) {
-      console.error("Failed to save storage to disk:", err);
+    } catch {
+      // Silent — disk write failure doesn't crash the app
     }
   }
 
@@ -378,8 +433,8 @@ export class MemStorage implements IStorage {
           if (p.postedAt) p.postedAt = new Date(p.postedAt);
         });
       }
-    } catch (err) {
-      console.error("Failed to load storage from disk:", err);
+    } catch {
+      // Silent — disk read failure falls back to empty state
     }
   }
 
@@ -397,11 +452,21 @@ export class MemStorage implements IStorage {
     return Array.from(this.blogs.values()).find(b => b.slug === slug);
   }
 
+  /**
+   * Tenant-isolated blog fetch for in-memory storage.
+   */
+  async getBlogBySlugAndClientId(slug: string, clientId: string): Promise<Blog | undefined> {
+    return Array.from(this.blogs.values()).find(
+      b => b.slug === slug && b.clientId === clientId && b.isPublished === true
+    );
+  }
+
   async createBlog(insertBlog: InsertBlog): Promise<Blog> {
     const id = this.blogId++;
     const blog: Blog = { 
       ...insertBlog, 
       id, 
+      clientId: insertBlog.clientId ?? null,
       createdAt: new Date(), 
       metaDescription: insertBlog.metaDescription ?? null, 
       tags: insertBlog.tags ?? null, 
@@ -454,6 +519,13 @@ export class MemStorage implements IStorage {
 
   async getExternalSiteByClientId(clientId: string): Promise<ExternalSite | undefined> {
     return Array.from(this.externalSites.values()).find(s => s.clientId === clientId);
+  }
+
+  async getExternalSiteByOrigin(origin: string): Promise<ExternalSite | undefined> {
+    const normalizedOrigin = origin.replace(/\/$/, "");
+    return Array.from(this.externalSites.values()).find(s => 
+      s.siteUrl.replace(/\/$/, "") === normalizedOrigin
+    );
   }
 
   async createExternalSite(site: InsertExternalSite): Promise<ExternalSite> {

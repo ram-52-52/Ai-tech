@@ -4,9 +4,34 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
+import { storage } from "./storage";
+
 const app = express();
+
+// Dynamic CORS for scalable client embedding
 const corsOptions = {
-  origin: "https://e-mart-1-mfge.onrender.com", 
+  origin: async (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // If no origin (like a server-side request or direct browser hit), allow it
+    if (!origin) return callback(null, true);
+    
+    try {
+      const site = await storage.getExternalSiteByOrigin(origin);
+      if (site && site.isEnabled) {
+        return callback(null, true);
+      }
+      
+      // Also allow the primary frontend
+      const allowedStaticOrigins = ["https://e-mart-1-mfge.onrender.com", "http://localhost:5000", "http://localhost:5173", "http://127.0.0.1:5000"];
+      if (allowedStaticOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    } catch (err) {
+      callback(err as Error);
+    }
+  },
+  credentials: true,
   optionsSuccessStatus: 200 
 };
 app.use(cors(corsOptions));
@@ -64,7 +89,6 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    console.error("Internal Server Error:", err);
 
     if (res.headersSent) {
       return next(err);

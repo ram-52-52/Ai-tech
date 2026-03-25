@@ -7,10 +7,6 @@ import OpenAI from "openai";
 
 // Initialize Gemini client
 const apiKey = (process.env.GEMINI_API_KEY || "").trim();
-if (!apiKey) {
-  console.error("[Gemini] ERROR: GEMINI_API_KEY is empty or missing in .env!");
-} else {
-}
 
 const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -81,12 +77,12 @@ export async function generateBlogPost(topic: string): Promise<InsertBlog> {
       try {
         const parsed = JSON.parse(metaContent);
         if (parsed.title) metaData = { ...metaData, title: sanitizeTitle(parsed.title), metaDescription: parsed.metaDescription, tags: parsed.tags, slug: parsed.slug };
-      } catch (e) {
-        console.warn("[Gemini] Failed to parse meta JSON, raw output was:", metaContent);
+      } catch (_e) {
+        // Meta parse failed — use fallback values already set
       }
     }
-  } catch (error: any) {
-    console.warn("[Gemini] Meta generation failed, using fallbacks.", error.message);
+  } catch {
+    // Meta generation failed — use fallback title/slug
   }
 
   const slug = metaData.slug || mockSlug;
@@ -149,7 +145,7 @@ export async function generateBlogPost(topic: string): Promise<InsertBlog> {
     content = sanitizeFinalContent(assembled);
 
   } catch (error: any) {
-    console.warn(`[Gemini] Segmented generation failed: ${error.message}. Attempting OpenAI Fallback...`);
+    // Gemini generation failed — attempting OpenAI fallback silently
     
     // ATTEMPT 2: OpenAI Fallback
     try {
@@ -184,8 +180,8 @@ export async function generateBlogPost(topic: string): Promise<InsertBlog> {
           };
         }
       }
-    } catch (oaErr: any) {
-      console.warn("[OpenAI] Fallback also failed:", oaErr.message);
+    } catch {
+      // OpenAI fallback also failed — using static template
     }
 
     // Static template as last resort

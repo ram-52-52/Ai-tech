@@ -4,10 +4,11 @@ import { z } from "zod";
 
 export const blogs = pgTable("blogs", {
   id: serial("id").primaryKey(),
+  clientId: text("client_id"), // Tenant isolation: links blog to its ExternalSite clientId
   title: text("title").notNull(),
   content: text("content").notNull(),
   topic: text("topic").notNull(),
-  slug: text("slug").unique().notNull(),
+  slug: text("slug").notNull(), // Unique per clientId (enforced at app layer)
   metaDescription: text("meta_description"),
   tags: text("tags").array(),
   imageUrl: text("image_url"),

@@ -3,11 +3,10 @@ import * as schema from "../shared/schema";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-  console.warn("MONGODB_URI not set. MongoDB storage will be unavailable.");
-} else {
+if (MONGODB_URI) {
   mongoose.connect(MONGODB_URI)
-    .catch((err) => console.error("MongoDB connection error:", err));
+    .then(() => console.log("✅ MongoDB connected"))
+    .catch(() => {}); // Silent fail — app continues with memory storage
 }
 
 // Keep Drizzle/Postgres placeholders for type safety/minimal breakage

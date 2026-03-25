@@ -4,6 +4,24 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Environment — never commit secrets
 .env
+.env.*
+
+# Local dev storage
 tmp-storage.json
 debug_ai.log
+
+# Generated image files — large binary assets not for version control
+client/public/generated-images/
+dist/public/generated-images/
+
+# Temporary debug/seed scripts
+tmp/
+
+# OS & editor artifacts
+Thumbs.db
+.vscode/
+.idea/
+*.log

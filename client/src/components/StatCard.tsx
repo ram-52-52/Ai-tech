@@ -32,7 +32,7 @@ export function StatCard({ title, value, icon, trend, trendUp, className }: Stat
         </div>
       <div className="mt-auto relative z-10">
         <p className="text-muted-foreground text-sm font-semibold mb-1 uppercase tracking-widest">{title}</p>
-        <h3 className="text-4xl font-display font-black text-foreground group-hover:text-glow transition-all duration-300">{value}</h3>
+        <h3 className="text-3xl md:text-4xl font-display font-black text-foreground group-hover:text-glow transition-all duration-300">{value}</h3>
       </div>
       </div>
     </div>

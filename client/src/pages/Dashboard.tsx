@@ -48,15 +48,15 @@ export default function Dashboard() {
       animate="show"
       className="space-y-8"
     >
-      <motion.header variants={itemVariants} className="mb-10">
-        <h1 className="text-5xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400 tracking-tight pb-2">
+      <motion.header variants={itemVariants} className="mb-10 pt-4 md:pt-0">
+        <h1 className="text-3xl md:text-5xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400 tracking-tight pb-2">
           Dashboard
         </h1>
-        <p className="text-muted-foreground mt-2 text-lg font-medium">Welcome back! Here's what's happening with your content.</p>
+        <p className="text-muted-foreground mt-2 text-base md:text-lg font-medium">Welcome back! Here's what's happening with your content.</p>
       </motion.header>
 
       {/* Stats Row */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Total Blogs" 
           value={allBlogs.length} 
@@ -91,7 +91,7 @@ export default function Dashboard() {
             <Link href="/blogs" className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors">View All &rarr;</Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <AnimatePresence>
               {recentBlogs.length > 0 ? (
                 recentBlogs.map((blog, idx) => (
