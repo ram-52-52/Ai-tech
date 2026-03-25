@@ -8,33 +8,41 @@ import { storage } from "./storage";
 
 const app = express();
 
-// Dynamic CORS for scalable client embedding
-const corsOptions = {
+// Dynamic CORS for scalable client embedding - Scoped ONLY to /api
+const dynamicCors = cors({
   origin: async (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     // If no origin (like a server-side request or direct browser hit), allow it
     if (!origin) return callback(null, true);
-    
+
     try {
-      const site = await storage.getExternalSiteByOrigin(origin);
-      if (site && site.isEnabled) {
+      // 1. ONLY allow your primary dashboard (No localhost, no hardcoded clients)
+      const allowedStaticOrigins = [
+        "https://ai-tech-5l4y.onrender.com"
+      ];
+
+      if (allowedStaticOrigins.includes(origin)) {
         return callback(null, true);
       }
-      
-      // Also allow the primary frontend
-      const allowedStaticOrigins = ["https://e-mart-1-mfge.onrender.com", "http://localhost:5000", "http://localhost:5173", "http://127.0.0.1:5000"];
-      if (allowedStaticOrigins.includes(origin)) {
+
+      // 2. Dynamic DB Check for external client sites
+      const site = await storage.getExternalSiteByOrigin(origin);
+      if (site && site.isEnabled) {
         return callback(null, true);
       }
 
       callback(new Error("Not allowed by CORS"));
     } catch (err) {
-      callback(err as Error);
+      // 3. SECURE FALLBACK: Fail closed to prevent unauthorized access if DB fails
+      // This also prevents the 500 error on static assets.
+      callback(null, false);
     }
   },
   credentials: true,
-  optionsSuccessStatus: 200 
-};
-app.use(cors(corsOptions));
+  optionsSuccessStatus: 200
+});
+
+// IMPORTANT FIX: Apply CORS ONLY to API routes, protecting static assets
+app.use("/api", dynamicCors);
 
 const httpServer = createServer(app);
 
@@ -88,7 +96,6 @@ app.use((req, res, next) => {
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
 
     if (res.headersSent) {
       return next(err);
