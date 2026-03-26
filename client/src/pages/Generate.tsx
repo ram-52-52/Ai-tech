@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sparkles, Wand2, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { SEO } from "@/components/SEO";
 
 export default function Generate() {
   const [topic, setTopic] = useState("");
@@ -47,7 +48,11 @@ export default function Generate() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-12">
+    <div className="max-w-4xl mx-auto py-12 px-4">
+      <SEO 
+        title="AI Content Generator" 
+        description="Harness the power of advanced AI to generate long-form, SEO-optimized blog posts on any topic in seconds." 
+      />
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -68,7 +73,7 @@ export default function Generate() {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.1 }}
-        className="glass-panel p-8 md:p-10 rounded-2xl relative overflow-hidden"
+        className="glass-panel p-8 md:p-12 rounded-[2.5rem] relative overflow-hidden border-white/20 shadow-2xl"
       >
         <form onSubmit={handleGenerate} className="space-y-8">
           <div className="space-y-4">

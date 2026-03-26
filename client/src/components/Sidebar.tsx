@@ -1,24 +1,38 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, FileText, Sparkles, TrendingUp, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, FileText, Sparkles, TrendingUp, Settings, LogOut, ShieldAlert, Users, CreditCard, Activity, PieChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 
+import { NAVIGATION_ITEMS, SUPERADMIN_NAVIGATION_ITEMS } from "@/constants/navigationConstant";
+
+const ICON_MAP: Record<string, any> = {
+  LayoutDashboard,
+  FileText,
+  Sparkles,
+  TrendingUp,
+  Settings,
+  ShieldAlert,
+  Users,
+  CreditCard,
+  Activity,
+  PieChart,
+};
+
 export function Sidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
 
-  const links = [
-    { href: "/", icon: LayoutDashboard, label: "Dashboard" },
-    { href: "/blogs", icon: FileText, label: "All Blogs" },
-    { href: "/generate", icon: Sparkles, label: "Generate New" },
-    { href: "/trends", icon: TrendingUp, label: "Trends" },
-    { href: "/settings", icon: Settings, label: "Settings" },
-  ];
+  const isSuperAdmin = user?.role === "superadmin";
+  const navItems = isSuperAdmin ? SUPERADMIN_NAVIGATION_ITEMS : NAVIGATION_ITEMS;
+  
+  const filteredLinks = navItems.filter(item => 
+    item.roles.includes(user?.role as any)
+  );
 
   return (
-    <aside className="w-[260px] border border-white/20 dark:border-white/5 bg-white/40 dark:bg-black/40 backdrop-blur-3xl h-[calc(100vh-2rem)] fixed left-4 top-4 rounded-[2rem] shadow-2xl dark:shadow-[0_0_40px_rgba(0,0,0,0.5)] overflow-hidden hidden md:flex flex-col z-50 transition-all duration-500">
+    <aside className="w-[280px] border border-white/20 dark:border-white/5 glass-panel h-[calc(100vh-2rem)] fixed left-4 top-4 rounded-[2.5rem] shadow-2xl dark:shadow-[0_0_40px_rgba(0,0,0,0.5)] overflow-hidden hidden lg:flex flex-col z-50 transition-all duration-500">
       <div className="p-6 relative">
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
         <div className="flex items-center gap-3 mb-8">
@@ -26,14 +40,14 @@ export function Sidebar() {
             <Sparkles className="text-white w-6 h-6" />
           </div>
           <h1 className="font-display font-bold text-xl tracking-tight text-foreground">
-            AutoBlog<span className="text-primary">.ai</span>
+            SaaS<span className="text-primary">Admin</span>
           </h1>
         </div>
 
         <nav className="space-y-1">
-          {links.map((link) => {
+          {filteredLinks.map((link: any) => {
             const isActive = location === link.href;
-            const Icon = link.icon;
+            const Icon = ICON_MAP[link.icon];
             
             return (
               <Link 
@@ -60,11 +74,12 @@ export function Sidebar() {
       <div className="mt-auto p-6 border-t border-border/50 space-y-4">
         <Button 
           variant="ghost" 
-          className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-500/10"
+          aria-label="Logout"
+          className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-2xl py-6"
           onClick={logout}
         >
           <LogOut className="w-5 h-5 mr-3" />
-          Logout
+          <span className="font-bold">Logout</span>
         </Button>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 overflow-hidden">

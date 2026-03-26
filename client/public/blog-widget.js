@@ -31,9 +31,9 @@
 
     async function setupWidget(container) {
 
-        const clientId = container.getAttribute('data-client-id');
-        if (!clientId) {
-            console.error(`[AI-Tech Widget] data-client-id is missing.`);
+        const siteId = container.getAttribute('data-site-id') || container.getAttribute('data-client-id');
+        if (!siteId) {
+            console.error(`[AI-Tech Widget] data-site-id or data-client-id is missing.`);
             return;
         }
 
@@ -51,9 +51,9 @@
             const slug = urlParams.get('slug');
 
             if (slug) {
-                await renderDetailView(container, clientId, slug);
+                await renderDetailView(container, siteId, slug);
             } else {
-                await renderListView(container, clientId);
+                await renderListView(container, siteId);
             }
         };
 
@@ -74,11 +74,11 @@
         render(); // Initial load check for deep linking
     }
 
-    async function renderListView(container, clientId) {
+    async function renderListView(container, siteId) {
         document.title = "Blog"; // Reset title on list view
         container.innerHTML = '<div class="at-loader">Loading blogs...</div>';
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/feed/${clientId}`);
+            const response = await fetch(`${API_BASE_URL}/api/v1/feed/${siteId}`);
             if (!response.ok) throw new Error('Failed to fetch feed');
             const blogs = await response.json();
 
@@ -111,10 +111,10 @@
         }
     }
 
-    async function renderDetailView(container, clientId, slug) {
+    async function renderDetailView(container, siteId, slug) {
         container.innerHTML = '<div class="at-loader">Loading blog details...</div>';
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/feed/${clientId}?slug=${slug}`);
+            const response = await fetch(`${API_BASE_URL}/api/v1/feed/${siteId}?slug=${slug}`);
             if (!response.ok) throw new Error('Blog not found');
             const blog = await response.json();
 

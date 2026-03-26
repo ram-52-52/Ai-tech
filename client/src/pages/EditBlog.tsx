@@ -3,6 +3,8 @@ import { useRoute, useLocation } from "wouter";
 import { useBlog, useUpdateBlog, useDeleteBlog } from "@/hooks/use-blogs";
 import { useSites, useScheduledPosts, useCreateScheduledPost, useDeleteScheduledPost } from "@/hooks/use-sites";
 import { api } from "@shared/routes";
+import { API_ENDPOINTS } from "@/constants/apiConstants";
+import { handleRegenerateImage, handleRegenerateFull } from "@/services/api/blogAPI";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -140,54 +142,33 @@ export default function EditBlog() {
     );
   };
 
-  const handleRegenerateImage = async () => {
+  const handleRegenerateImageClick = async () => {
     if (!currentTitle) return;
     setIsRegenerating(true);
-    try {
-      const res = await fetch(`/api/blogs/${id}/regenerate-image`, { 
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: currentTitle })
-      });
-      if (!res.ok) throw new Error("Failed to regenerate");
-      
-      const updated = await res.json();
-      // CRITICAL: Update form state to reflect new image and set dirty
-      setValue("imageUrl", updated.imageUrl, { shouldDirty: true });
-      
-      // Invalidate queries to update dashboard
+    const res = await handleRegenerateImage(id, currentTitle);
+    if (res.success) {
+      setValue("imageUrl", res.data.imageUrl, { shouldDirty: true });
       queryClient.invalidateQueries({ queryKey: [api.blogs.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.blogs.get.path, id] });
-      
       toast({ title: "Featured Image Updated", description: "Successfully refreshed the visuals based on current title." });
-    } catch (error) {
-      toast({ title: "Image Sync Failed", description: "Could not fetch new featured visual.", variant: "destructive" });
-    } finally {
-      setIsRegenerating(false);
+    } else {
+      toast({ title: "Image Sync Failed", description: res.error || "Could not fetch new featured visual.", variant: "destructive" });
     }
+    setIsRegenerating(false);
   };
 
-  const handleRegenerateFull = async () => {
+  const handleRegenerateFullClick = async () => {
     if (!currentTitle) return;
     setIsRegeneratingFull(true);
-    try {
-      const res = await fetch(`/api/blogs/${id}/regenerate-full`, { 
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: currentTitle })
-      });
-      if (!res.ok) throw new Error("Failed to regenerate full content");
-      
-      const updatedBlog = await res.json();
-      
-      // CRITICAL: Update form state and set dirty to enable Save button
+    const res = await handleRegenerateFull(id, currentTitle);
+    if (res.success) {
+      const updatedBlog = res.data;
       setValue("content", updatedBlog.content, { shouldDirty: true });
       setValue("tags", updatedBlog.tags ? updatedBlog.tags.join(", ") : "", { shouldDirty: true });
       setValue("metaDescription", updatedBlog.metaDescription || currentTitle, { shouldDirty: true });
       setValue("imageUrl", updatedBlog.imageUrl, { shouldDirty: true });
       setValue("topic", updatedBlog.topic || "", { shouldDirty: true });
 
-      // Invalidate queries to update dashboard
       queryClient.invalidateQueries({ queryKey: [api.blogs.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.blogs.get.path, id] });
 
@@ -195,11 +176,10 @@ export default function EditBlog() {
         title: "Portfolio Refreshed", 
         description: "Full content and high-density visuals have been synchronized." 
       });
-    } catch (error) {
-      toast({ title: "Regeneration Failed", description: "OpenAI quota reached or network error.", variant: "destructive" });
-    } finally {
-      setIsRegeneratingFull(false);
+    } else {
+      toast({ title: "Regeneration Failed", description: res.error || "OpenAI quota reached or network error.", variant: "destructive" });
     }
+    setIsRegeneratingFull(false);
   };
 
   return (
@@ -253,7 +233,7 @@ export default function EditBlog() {
                   />
                 </div>
                 <Button 
-                  onClick={handleRegenerateFull}
+                  onClick={handleRegenerateFullClick}
                   disabled={isRegeneratingFull || !currentTitle}
                   className="h-14 px-6 rounded-xl bg-gradient-to-r from-primary to-violet-600 hover:shadow-lg hover:shadow-primary/20 transition-all group shrink-0"
                 >
@@ -356,7 +336,7 @@ export default function EditBlog() {
 
             <Button 
               variant="outline" 
-              onClick={handleRegenerateImage}
+              onClick={handleRegenerateImageClick}
               disabled={isRegenerating || isRegeneratingFull || !currentTitle}
               className="w-full bg-background/50 hover:bg-secondary border-dashed border-2 rounded-xl h-11 transition-all"
             >
@@ -506,7 +486,7 @@ export default function EditBlog() {
             <Button
               variant="outline"
               className="w-full bg-background/50 hover:bg-background border-primary/20 text-primary rounded-xl transition-all"
-              onClick={() => window.open(`/api/blogs/preview/${id}`, '_blank')}
+              onClick={() => window.open(API_ENDPOINTS.BLOG.PREVIEW(id), '_blank')}
             >
               Preview on Live Engine
             </Button>

@@ -1,11 +1,18 @@
 import { useBlogs, useTrends } from "@/hooks/use-blogs";
+import { useGlobalStats } from "@/hooks/use-admin";
+import { useAuth } from "@/hooks/use-auth";
 import { StatCard } from "@/components/StatCard";
 import { BlogCard } from "@/components/BlogCard";
-import { FileText, CheckCircle2, TrendingUp, RefreshCw, Sparkles } from "lucide-react";
+import { FileText, CheckCircle2, TrendingUp, RefreshCw, Sparkles, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader } from "@/components/Loader";
+import { SEO } from "@/components/SEO";
+import { BlogSkeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
+import { StatCardSkeleton } from "@/components/StatCard";
+import { cn } from "@/lib/utils";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -21,11 +28,32 @@ const itemVariants = {
 };
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'superadmin';
   const { data: blogs, isLoading: blogsLoading } = useBlogs();
   const { data: trends, isLoading: trendsLoading } = useTrends();
+  const { data: globalStats, isLoading: statsLoading } = useGlobalStats(isSuperAdmin);
 
-  if (blogsLoading || trendsLoading) {
-    return <Loader />;
+  if (blogsLoading || trendsLoading || (isSuperAdmin && statsLoading)) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-700">
+        <SEO title="Dashboard" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <BlogSkeleton />
+              <BlogSkeleton />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const allBlogs = blogs || [];
@@ -46,41 +74,49 @@ export default function Dashboard() {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="space-y-8"
     >
+      <SEO 
+        title="Dashboard" 
+        description="View your AI-Tech SaaS overview, track trends, and manage your latest blogs." 
+      />
       <motion.header variants={itemVariants} className="mb-10 pt-4 md:pt-0">
-        <h1 className="text-3xl md:text-5xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400 tracking-tight pb-2">
-          Dashboard
-        </h1>
-        <p className="text-muted-foreground mt-2 text-base md:text-lg font-medium">Welcome back! Here's what's happening with your content.</p>
+        <div className="w-full md:w-auto">
+          <h1 className="text-2xl md:text-5xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 tracking-tight pb-2">
+            Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-2 text-sm md:text-lg font-medium">Welcome back! Here's what's happening with your content.</p>
+        </div>
       </motion.header>
 
       {/* Stats Row */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <motion.div variants={itemVariants} className={cn(
+        "grid grid-cols-1 sm:grid-cols-2 gap-6",
+        isSuperAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3"
+      )}>
         <StatCard 
-          title="Total Blogs" 
-          value={allBlogs.length} 
+          title={isSuperAdmin ? "Total Platform Blogs" : "Total Blogs"} 
+          value={isSuperAdmin ? (globalStats?.totalBlogs || 0) : allBlogs.length} 
           icon={<FileText className="w-5 h-5 text-primary" />}
-          trend="+12%"
-          trendUp={true}
+          trend={isSuperAdmin ? undefined : "+12%"}
+          trendUp={isSuperAdmin ? undefined : true}
         />
         <StatCard 
           title="Published" 
-          value={publishedCount} 
+          value={isSuperAdmin ? (globalStats?.totalPublished || 0) : publishedCount} 
           icon={<CheckCircle2 className="w-5 h-5 text-primary" />}
         />
         <StatCard 
           title="Drafts" 
-          value={draftCount} 
+          value={isSuperAdmin ? (globalStats?.totalDrafts || 0) : draftCount} 
           icon={<RefreshCw className="w-5 h-5 text-primary" />}
         />
-        <StatCard 
-          title="Total Views" 
-          value={totalViews.toLocaleString()} 
-          icon={<TrendingUp className="w-5 h-5 text-primary" />}
-          trend="+24%"
-          trendUp={true}
-        />
+        {isSuperAdmin && (
+          <StatCard 
+            title="Total Clients" 
+            value={globalStats?.totalUsers || 0} 
+            icon={<UserPlus className="w-5 h-5 text-primary" />}
+          />
+        )}
       </motion.div>
 
       <motion.div variants={containerVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
@@ -104,15 +140,14 @@ export default function Dashboard() {
                   </motion.div>
                 ))
               ) : (
-                <div className="col-span-2 py-16 text-center glass-card rounded-2xl border border-dashed border-border/60">
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FileText className="w-8 h-8 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground mb-2">No blogs created yet</h3>
-                  <p className="text-muted-foreground mb-6">Get started by generating your first piece of AI content.</p>
-                  <Button asChild size="lg" className="rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-1 transition-all duration-300">
-                    <Link href="/generate">Create Your First Blog</Link>
-                  </Button>
+                <div className="col-span-1 sm:col-span-2">
+                  <EmptyState 
+                    icon={FileText}
+                    title="No blogs created yet"
+                    description="Get started by generating your first piece of AI content. It's fast, professional, and SEO-optimized."
+                    actionText="Create Your First Blog"
+                    onAction={() => window.location.href = '/generate'}
+                  />
                 </div>
               )}
             </AnimatePresence>

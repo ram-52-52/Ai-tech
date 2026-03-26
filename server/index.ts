@@ -5,7 +5,9 @@ import createMemoryStore from "memorystore";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { BlogModel } from "./models";
+import { BlogModel, UserModel, ExternalSiteModel } from "./models";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 import { storage } from "./storage";
 
@@ -121,18 +123,46 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Manual Fix: One-time script to backfill null clientIds to E-mart ID
-  try {
-    const FIXED_CLIENT_ID = '6acbc0de-d5b7-46cc-bf32-a1dc0b3faf59';
-    const result = await BlogModel.updateMany(
-      { $or: [{ clientId: null }, { clientId: { $exists: false } }, { clientId: "" }] },
-      { $set: { clientId: FIXED_CLIENT_ID } }
-    );
-    if (result.modifiedCount > 0) {
-      console.log(`[Backfill] Updated ${result.modifiedCount} blogs with the E-mart clientId.`);
+    // SaaS Transformation: Super Admin Creation (Cleanup removed to persist data)
+    try {
+      const adminUser = await storage.getUserByUsername('admin@yopmail.com');
+      if (!adminUser) {
+        console.log(`[Startup] Creating Super Admin account...`);
+        const hashedPassword = await bcrypt.hash('admin123', 10);
+        await storage.createUser({
+          username: 'admin@yopmail.com',
+          password: hashedPassword,
+          clientId: crypto.randomUUID(),
+          role: 'superadmin'
+        } as any);
+        console.log(`[Startup] Super Admin created successfully.`);
+      } else {
+        // Update password anyway to be sure
+        const hashedPassword = await bcrypt.hash('admin123', 10);
+        await UserModel.updateOne({ username: 'admin@yopmail.com' }, { $set: { password: hashedPassword, role: 'superadmin' } });
+        console.log(`[Startup] Super Admin password reset to admin123`);
+      }
+    } catch (err) {
+      console.error(`[Startup] Failed to perform SaaS cleanup/setup:`, err);
     }
-  } catch (err) {
-    console.error(`[Backfill] Failed to update missing client IDs:`, err);
+
+  // Drop legacy unique index on clientId in externalsites collection
+  // (clientId is now a non-unique tenant key, not a unique widget identifier)
+  try {
+    const collection = ExternalSiteModel.collection;
+    const indexes = await collection.indexes();
+    const clientIdUniqueIndex = indexes.find(
+      (idx: any) => idx.key?.clientId && idx.unique
+    );
+    if (clientIdUniqueIndex) {
+      await collection.dropIndex(clientIdUniqueIndex.name!);
+      console.log(`[Startup] Dropped legacy unique index on externalsites.clientId`);
+    }
+  } catch (err: any) {
+    // Ignore if index doesn't exist or collection not ready
+    if (!err.message?.includes('not found')) {
+      console.error(`[Startup] Index drop warning:`, err.message);
+    }
   }
 
   await registerRoutes(httpServer, app);

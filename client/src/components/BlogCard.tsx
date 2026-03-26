@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useDeleteBlog } from "@/hooks/use-blogs";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
 import {
   AlertDialog,
@@ -23,14 +24,16 @@ interface BlogCardProps {
 }
 
 export function BlogCard({ blog }: BlogCardProps) {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'superadmin';
   const { mutate: deleteBlog, isPending: isDeleting } = useDeleteBlog();
   const { toast } = useToast();
 
   return (
-    <motion.div 
-      whileHover={{ y: -8, scale: 1.02 }}
+    <motion.article 
+      whileHover={{ y: -8 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className="dashboard-card overflow-hidden flex flex-col h-full group relative border border-transparent hover:border-primary/50 hover:shadow-[0_0_40px_rgba(99,102,241,0.3)] transition-all duration-500 dark:bg-black/40"
+      className="glass-card overflow-hidden flex flex-col h-full group relative border-white/20 hover:border-primary/50 hover:shadow-[0_0_40px_rgba(99,102,241,0.2)] transition-all duration-500"
     >
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
       <div className="h-48 bg-secondary/50 relative overflow-hidden">
@@ -45,8 +48,13 @@ export function BlogCard({ blog }: BlogCardProps) {
             <span className="text-6xl font-display font-bold">Ab.</span>
           </div>
         )}
-        <div className="absolute top-4 right-4">
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md shadow-sm ${
+        <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+          {isSuperAdmin && (blog as any).author && (
+            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter bg-indigo-600 text-white shadow-lg shadow-indigo-500/40 border border-white/20">
+              Client: {(blog as any).author}
+            </span>
+          )}
+          <span className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md shadow-sm border border-white/10 ${
             blog.isPublished 
               ? "bg-emerald-500/90 text-white" 
               : "bg-amber-500/90 text-white"
@@ -90,13 +98,13 @@ export function BlogCard({ blog }: BlogCardProps) {
         </p>
         
         <div className="flex items-center gap-2 pt-4 border-t border-border/50 mt-auto">
-          <Button variant="ghost" size="sm" className="flex-1 bg-secondary/50 hover:bg-primary hover:text-white transition-all" asChild>
+          <Button variant="ghost" size="sm" aria-label={`View ${blog.title}`} className="flex-1 bg-secondary/30 hover:bg-primary hover:text-white transition-all rounded-xl" asChild>
             <Link href={`/blogs/${blog.id}/view`}>
               <Eye className="w-4 h-4 mr-2" />
               View
             </Link>
           </Button>
-          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 hover:bg-secondary" asChild>
+          <Button variant="outline" size="icon" aria-label={`Edit ${blog.title}`} className="h-9 w-9 shrink-0 hover:bg-secondary rounded-xl" asChild>
             <Link href={`/blogs/${blog.id}`}>
               <Edit2 className="w-4 h-4" />
             </Link>
@@ -138,6 +146,6 @@ export function BlogCard({ blog }: BlogCardProps) {
           </AlertDialog>
         </div>
       </div>
-    </motion.div>
+    </motion.article>
   );
 }

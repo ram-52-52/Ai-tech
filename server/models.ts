@@ -30,6 +30,7 @@ const BlogSchema = new Schema({
   featuredMediaProvider: { type: String },
   isPublished: { type: Boolean, default: false },
   publishedAt: { type: Date },
+  scheduledAt: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -63,7 +64,7 @@ export const TrendModel = mongoose.model("Trend", TrendSchema);
 // External Site Schema
 const ExternalSiteSchema = new Schema({
   id: { type: Number, unique: true },
-  clientId: { type: String, unique: true, sparse: true },
+  clientId: { type: String, index: true },
   siteName: { type: String, required: true },
   siteType: { type: String, required: true },
   siteUrl: { type: String, required: true },
@@ -83,11 +84,12 @@ export const ExternalSiteModel = mongoose.model("ExternalSite", ExternalSiteSche
 
 // Scheduled Post Schema
 const ScheduledPostSchema = new Schema({
-  id: { type: Number, unique: true },
+  id: { type: Number, required: true, unique: true },
+  clientId: { type: String },
   blogId: { type: Number, required: true },
   siteId: { type: Number, required: true },
   scheduledAt: { type: Date, required: true },
-  status: { type: String, default: "pending", required: true },
+  status: { type: String, default: "pending" },
   postedAt: { type: Date },
   errorMessage: { type: String },
   createdAt: { type: Date, default: Date.now }
@@ -107,6 +109,9 @@ const UserSchema = new Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   clientId: { type: String, required: true },
+  role: { type: String, enum: ['user', 'superadmin'], default: 'user' },
+  plan: { type: String, enum: ['Free Trial', 'Starter', 'Growth', 'Pro'], default: 'Free Trial' },
+  blogsGeneratedThisMonth: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -117,3 +122,21 @@ UserSchema.pre("save", async function(this: any) {
 });
 
 export const UserModel = mongoose.model("User", UserSchema);
+
+// Log Schema
+const LogSchema = new Schema({
+  id: { type: Number, unique: true },
+  userId: { type: Number },
+  username: { type: String },
+  action: { type: String, required: true },
+  details: { type: String },
+  timestamp: { type: Date, default: Date.now }
+});
+
+LogSchema.pre("save", async function(this: any) {
+  if (this.isNew && !this.id) {
+    this.id = await getNextSequenceValue("logId");
+  }
+});
+
+export const LogModel = mongoose.model("Log", LogSchema);

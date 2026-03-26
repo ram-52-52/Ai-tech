@@ -11,6 +11,8 @@ import { publishBlog } from "./services/publisher";
 import { uploadFeaturedImageToWordPress } from "./services/wpImageUploader";
 import cron from "node-cron";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import { UserModel } from "./models";
 
 // Default client ID — used as fallback when no clientId is supplied in a request
 const PRIMARY_CLIENT_ID = "6acbc0de-d5b7-46cc-bf32-a1dc0b3faf59";
@@ -19,6 +21,33 @@ export function requireAuth(req: any, res: any, next: any) {
   if (!req.session?.userId) {
     return res.status(401).json({ message: "Unauthorized: Please log in." });
   }
+  next();
+}
+
+async function logPlatformAction(userId: number | undefined, username: string | undefined, action: string, details?: string) {
+  try {
+    await storage.createLog({
+      userId,
+      username,
+      action,
+      details: details || null
+    });
+  } catch (err) {
+    console.error("[Logging Error]", err);
+  }
+}
+
+export async function requireSuperAdmin(req: any, res: any, next: any) {
+  if (!req.session?.userId) {
+    console.log("[Auth] requireSuperAdmin: No userId in session");
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const user = await storage.getUserById(Number(req.session.userId));
+  if (!user || user.role !== 'superadmin') {
+    console.log(`[Auth] requireSuperAdmin: User ${user?.username} is not superadmin (Role: ${user?.role})`);
+    return res.status(403).json({ message: "Forbidden: Super Admin access required." });
+  }
+  console.log(`[Auth] requireSuperAdmin: Success for ${user.username}`);
   next();
 }
 
@@ -32,25 +61,32 @@ export async function registerRoutes(
     if (!req.session?.userId) {
       return res.status(401).json({ message: "Not logged in" });
     }
-    const user = await storage.getUserByUsername("admin"); // or by ID if implemented
-    // Since we only have username in session currently via ID, let's just return what we have:
-    res.json({ id: req.session.userId, clientId: req.session.clientId });
+    const user = await storage.getUserById(req.session.userId);
+    if (!user) return res.status(401).json({ message: "User not found" });
+    console.log(`[/api/me] User: ${user.username}, Role: ${user.role}, ClientId: ${user.clientId}`);
+    res.json({ id: user.id, username: user.username, clientId: user.clientId, role: user.role });
   });
 
   app.post("/api/register", async (req, res) => {
     try {
-      const { username, password, clientId } = req.body;
-      if (!username || !password || !clientId) return res.status(400).json({ message: "Missing username, password, or clientId" });
+      const { username, password } = req.body;
+      if (!username || !password) return res.status(400).json({ message: "Missing username or password" });
+      
       const existing = await storage.getUserByUsername(username);
       if (existing) return res.status(400).json({ message: "User already exists" });
       
+      // Auto-generate a unique clientId for each new SaaS user
+      const clientId = crypto.randomUUID();
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = await storage.createUser({ username, password: hashedPassword, clientId });
       
       // Auto-login upon registration
       req.session.userId = user.id;
       req.session.clientId = user.clientId;
-      res.status(201).json({ message: "Registered", user: { id: user.id, username: user.username, clientId: user.clientId } });
+
+      await logPlatformAction(user.id, user.username, "Registration", `New user registered: ${user.username}`);
+
+      res.status(201).json({ message: "Registered", user: { id: user.id, username: user.username, clientId: user.clientId, role: user.role } });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
@@ -61,36 +97,180 @@ export async function registerRoutes(
       const { username, password } = req.body;
       const user = await storage.getUserByUsername(username);
       if (!user) return res.status(401).json({ message: "Invalid credentials" });
-      
+
       const isValid = await bcrypt.compare(password, user.password);
       if (!isValid) return res.status(401).json({ message: "Invalid credentials" });
-      
+
       req.session.userId = user.id;
       req.session.clientId = user.clientId;
-      res.json({ message: "Logged in", user: { id: user.id, username: user.username, clientId: user.clientId } });
+
+      await logPlatformAction(user.id, user.username, "Login", `User logged in: ${user.username}`);
+
+      res.json({ message: "Logged in", user: { id: user.id, username: user.username, clientId: user.clientId, role: user.role } });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
   });
 
-  app.post("/api/logout", (req, res) => {
-    req.session.destroy(() => {
+  app.post("/api/logout", (req: any, res) => {
+    const userId = req.session.userId;
+    req.session.destroy(async () => {
+      if (userId) {
+        const user = await storage.getUserById(userId);
+        await logPlatformAction(userId, user?.username, "Logout", "User logged out");
+      }
       res.json({ message: "Logged out" });
     });
+  });
+
+  // --- Super Admin Routes ---
+  app.get("/api/admin/users", requireSuperAdmin, async (_req, res) => {
+    const users = await storage.getUsers();
+    res.json(users);
+  });
+
+  app.get("/api/admin/global-stats", requireSuperAdmin, async (_req, res) => {
+    try {
+      const stats = await storage.getGlobalStats();
+      res.json(stats);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/platform-events", requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { page, limit, userId } = req.query;
+      console.log(`[API] Fetching logs: page=${page}, limit=${limit}, userId=${userId}`);
+      const result = await storage.getLogs({
+        page: page ? Number(page) : 1,
+        limit: limit ? Number(limit) : 20,
+        userId: userId ? Number(userId) : undefined
+      });
+      console.log(`[API] Returning ${result.logs.length} logs (Total: ${result.total})`);
+      res.json(result);
+    } catch (err: any) {
+      console.error("[API Error] /api/admin/logs:", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/users", requireSuperAdmin, async (req, res) => {
+    try {
+      const { username, password, plan } = req.body;
+      if (!username) return res.status(400).json({ message: "Username is required" });
+
+      const existing = await storage.getUserByUsername(username);
+      if (existing) return res.status(400).json({ message: "User already exists" });
+
+      const clientId = crypto.randomUUID();
+      const generatedPassword = password || crypto.randomBytes(8).toString('hex');
+      const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+      
+      const user = await storage.createUser({ 
+        username, 
+        password: hashedPassword, 
+        clientId, 
+        role: 'user',
+        plan: plan || 'Free Trial'
+      } as any);
+
+      await logPlatformAction(Number(req.session.userId), 'Super Admin', "User Provisioned", `Created new client: ${username}`);
+
+      res.status(201).json({ 
+        message: "User created", 
+        user: { id: user.id, username: user.username, clientId: user.clientId },
+        generatedPassword: password ? undefined : generatedPassword
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/users/:id/send-credentials", requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { alternateEmail } = req.body;
+      const user = await storage.getUserById(Number(req.params.id));
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      // We don't store plain passwords, so for 'Send Credentials' we might need to reset it 
+      // or assume the admin just created them. 
+      // BUT requirement says: "Save them with role 'user'". 
+      // "POST /api/admin/users/:id/send-credentials: A route that accepts an optional alternateEmail in the body."
+      // Since it doesn't mention resetting, I'll assume we send a new random password or the one provided.
+      // To strictly follow: I'll generate a new one and update.
+      
+      const newPassword = crypto.randomBytes(8).toString('hex');
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      
+      // Update existing user with new hashed password using direct MongoDB update
+      // This bypasses Mongoose 'save' lifecycle to prevent duplicate key errors on _id
+      await UserModel.updateOne({ id: user.id }, { $set: { password: hashedPassword } });
+
+      const emailTo = alternateEmail || (usernameIsEmail(user.username) ? user.username : null);
+      if (!emailTo) return res.status(400).json({ message: "No valid email found or provided" });
+
+      const { sendWelcomeEmail } = await import("./services/email");
+      await sendWelcomeEmail(emailTo, user.username, newPassword);
+
+      res.json({ message: `Credentials sent to ${emailTo}` });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  function usernameIsEmail(username: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username);
+  }
+
+  app.post("/api/admin/impersonate/:id", requireSuperAdmin, async (req: any, res) => {
+    try {
+      const user = await storage.getUserById(Number(req.params.id));
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      req.session.userId = user.id;
+      req.session.clientId = user.clientId;
+      res.json({ message: `Now impersonating ${user.username}` });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
   // --- Blog Routes ---
 
   // Public Syndication Feed (Domain-Locked)
-  app.get("/api/v1/feed/:clientId", async (req, res) => {
+  app.get("/api/v1/feed/:id", async (req, res) => {
     try {
-      const { clientId } = req.params;
+      const { id } = req.params;
       const { blogId, slug } = req.query;
-      const site = await storage.getExternalSiteByClientId(clientId);
+      
+      let site;
+      // Backward Compatibility: If id is numeric, it's a siteId. If not, it's a clientId.
+      if (/^\d+$/.test(id)) {
+        site = await storage.getExternalSite(Number(id));
+      } else {
+        site = await storage.getExternalSiteByClientId(id);
+      }
 
       if (!site || site.siteType !== "embed_widget" || !site.isEnabled) {
         return res.status(404).json({ error: "Widget not found or disabled" });
       }
+
+      // Security Check: Origin/Referer (to prevent unauthorized embedding)
+      const requestOrigin = req.headers.origin || req.headers.referer || "";
+      const siteUrl = site.siteUrl.toLowerCase().replace(/\/$/, "");
+      
+      if (requestOrigin) {
+        const normalizedOrigin = requestOrigin.toLowerCase().replace(/\/$/, "");
+        if (!normalizedOrigin.includes(siteUrl) && !siteUrl.includes(normalizedOrigin)) {
+          // If it's a completely different domain, block it
+          // Note: In development, localhost might have different ports, but we try to match.
+          console.warn(`[Security] Unauthorized embed attempt from ${requestOrigin} for site ${site.siteUrl}`);
+          return res.status(403).json({ error: "Unauthorized origin" });
+        }
+      }
+
+      const clientId = site.clientId!;
 
       // 1. Single Blog Detail View (by slug — tenant-isolated)
       if (slug || blogId) {
@@ -101,13 +281,17 @@ export async function registerRoutes(
           blog = await storage.getBlogBySlugAndClientId(slug as string, clientId);
         } else {
           blog = await storage.getBlog(Number(blogId));
-          // Validate the non-slug path still checks isPublished
-          if (blog && !blog.isPublished) blog = undefined;
+          // Validate ownership and published status
+          if (blog && (blog.clientId !== clientId || !blog.isPublished)) {
+              blog = undefined;
+          }
         }
 
         if (!blog) {
           return res.status(404).json({ error: "Blog not found" });
         }
+
+        // Return ONLY public fields. DO NOT return clientId.
         return res.json({
           title: blog.title,
           content: blog.content,
@@ -119,11 +303,16 @@ export async function registerRoutes(
         });
       }
 
-      // 2. Blog List View (Latest 10)
-      const blogs = await storage.getBlogs();
+      // 2. Blog List View (Latest 10) - Strictly isolated and published/scheduled check
+      const blogs = await storage.getBlogs(clientId);
       const now = new Date();
       const feed = blogs
-        .filter(b => b.isPublished && b.publishedAt && new Date(b.publishedAt) <= now)
+        .filter(b => {
+          // Strict filter: matches client, and is directly published OR should be live now based on schedule
+          const isActuallyPublished = b.isPublished === true;
+          const isScheduleMet = b.scheduledAt && new Date(b.scheduledAt) <= now;
+          return (isActuallyPublished || isScheduleMet) && b.clientId === clientId;
+        })
         .slice(0, 10)
         .map(b => {
           const fallbackSlug = b.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").substring(0, 50);
@@ -139,33 +328,70 @@ export async function registerRoutes(
         });
 
       res.json(feed);
-    } catch {
+    } catch (err) {
+      console.error(`[Feed API Error]:`, err);
       res.status(500).json({ error: "Internal Server Error" });
     }
   });
 
-  app.get(api.blogs.list.path, async (req, res) => {
-    const blogs = await storage.getBlogs();
-    res.json(blogs);
+  app.get(api.blogs.list.path, requireAuth, async (req: any, res) => {
+    try {
+      const user = await storage.getUserById(Number(req.session.userId));
+      const isSuperAdmin = user?.role === 'superadmin';
+      const logMsg = `[/api/blogs] Time: ${new Date().toISOString()}, User: ${user?.username}, Role: ${user?.role}, isSuperAdmin: ${isSuperAdmin}, clientId: ${req.session.clientId}\n`;
+      fs.appendFileSync("debug.log", logMsg);
+      
+      let blogs = await storage.getBlogs(isSuperAdmin ? undefined : req.session.clientId);
+      fs.appendFileSync("debug.log", `[/api/blogs] Found ${blogs.length} blogs\n`);
+      
+      if (isSuperAdmin) {
+        // Attach creator info for superadmin
+        const allUsers = await storage.getUsers();
+        const userMap = new Map(allUsers.map(u => [u.clientId, u.username]));
+        blogs = blogs.map(b => ({
+          ...b,
+          author: b.clientId ? (userMap.get(b.clientId) || "Unknown") : "System"
+        }));
+      }
+      
+      res.json(blogs);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
-  app.get(api.blogs.get.path, async (req, res) => {
+  app.get(api.blogs.get.path, requireAuth, async (req: any, res) => {
+    const clientId = req.session.clientId;
     const blog = await storage.getBlog(Number(req.params.id));
-    if (!blog) return res.status(404).json({ message: "Blog not found" });
+    if (!blog || blog.clientId !== clientId) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
     res.json(blog);
   });
 
-  app.get(api.blogs.getBySlug.path, async (req, res) => {
+  app.get(api.blogs.getBySlug.path, requireAuth, async (req: any, res) => {
+    const clientId = req.session.clientId;
     const blog = await storage.getBlogBySlug(req.params.slug);
-    if (!blog) return res.status(404).json({ message: "Blog not found" });
+    if (!blog || blog.clientId !== clientId) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
     res.json(blog);
   });
 
   app.post(api.blogs.create.path, requireAuth, async (req: any, res) => {
     try {
-      // Prioritize session clientId, default to PRIMARY_CLIENT_ID if missing
-      const requestClientId = req.session?.clientId || PRIMARY_CLIENT_ID;
-      const body = { clientId: requestClientId, ...req.body };
+      const clientId = req.session.clientId;
+      if (!clientId) return res.status(401).json({ message: "No client profile" });
+
+      // Automatically set isPublished based on scheduledAt if provided
+      const isScheduling = !!req.body.scheduledAt;
+      const body = { 
+        ...req.body, 
+        clientId,
+        isPublished: isScheduling ? false : (req.body.isPublished ?? true),
+        publishedAt: isScheduling ? null : new Date()
+      };
+
       const input = api.blogs.create.input.parse(body);
       const blog = await storage.createBlog(input);
       res.status(201).json(blog);
@@ -183,7 +409,7 @@ export async function registerRoutes(
       const blog = await storage.updateBlog(Number(req.params.id), input);
       res.json(blog);
     } catch (err) {
-       if (err instanceof z.ZodError) {
+      if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
       res.status(404).json({ message: "Blog not found" });
@@ -229,20 +455,51 @@ export async function registerRoutes(
   app.post(api.blogs.generate.path, requireAuth, async (req: any, res) => {
     try {
       let topic = req.body.topic;
-      const clientId: string = req.session?.clientId || req.body.clientId || PRIMARY_CLIENT_ID;
-      
+      const clientId = req.session.clientId;
+      if (!clientId) return res.status(401).json({ message: "No client profile" });
+
       if (!topic) {
-         // Fetch trends if no topic provided
-         const trends = await fetchTrends();
-         if (trends && trends.length > 0) {
-            topic = trends[0].topic; // Pick top trend
-         } else {
-            return res.status(400).json({ message: "No topic provided and could not fetch trends." });
-         }
+        // Fetch trends if no topic provided
+        const trends = await fetchTrends();
+        if (trends && trends.length > 0) {
+          topic = trends[0].topic; // Pick top trend
+        } else {
+          return res.status(400).json({ message: "No topic provided and could not fetch trends." });
+        }
       }
 
       const generatedBlog = await generateBlogPost(topic);
-      const blog = await storage.createBlog({ ...generatedBlog, clientId });
+      
+      // Quota Enforcement
+      const user = await storage.getUserById(req.session.userId);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const limits: Record<string, number> = {
+        'Free Trial': 2,
+        'Starter': 3,
+        'Growth': 10,
+        'Pro': 30
+      };
+
+      const userLimit = limits[user.plan] || 2;
+      if (user.blogsGeneratedThisMonth >= userLimit) {
+        return res.status(403).json({ 
+          message: `Plan limit reached (${userLimit} blogs/month). Please contact the administrator to upgrade your plan.` 
+        });
+      }
+
+      const blog = await storage.createBlog({ 
+        ...generatedBlog, 
+        clientId,
+        isPublished: true, // Generated blogs are usually published immediately
+        publishedAt: new Date()
+      });
+
+      // Increment usage count
+      await storage.incrementUserBlogCount(user.id);
+
+      await logPlatformAction(user.id, user.username, "Blog Generated", `Topic: ${topic}`);
+
       res.status(201).json(blog);
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to generate blog" });
@@ -257,14 +514,14 @@ export async function registerRoutes(
       if (!blog) return res.status(404).json({ message: "Blog not found" });
 
       const targetTitle = bodyTitle || blog.title;
-      
+
       // 1. Generate Full Blog (Content, Tags, Image) using the unified service
       const generated = await generateBlogPost(targetTitle);
-      
+
       // 2. Optional WordPress Media Sync
       const sites = await storage.getExternalSites();
       const wpSite = sites.find(s => s.siteType === "wordpress" && s.isEnabled);
-      
+
       if (wpSite && generated.imageUrl) {
         try {
           await uploadFeaturedImageToWordPress(generated.imageUrl, generated.title, wpSite.siteUrl);
@@ -273,9 +530,9 @@ export async function registerRoutes(
         }
       }
 
-      const updatedBlog = await storage.updateBlog(id, { 
+      const updatedBlog = await storage.updateBlog(id, {
         title: generated.title,
-        content: generated.content, 
+        content: generated.content,
         tags: generated.tags,
         imageUrl: generated.imageUrl,
         metaDescription: generated.metaDescription,
@@ -297,10 +554,10 @@ export async function registerRoutes(
       if (!blog) return res.status(404).json({ message: "Blog not found" });
 
       const targetTitle = bodyTitle || blog.title;
-      
+
       const imageResult = await generateImageForBlog(targetTitle, blog.slug);
-      
-      const updatedBlog = await storage.updateBlog(id, { 
+
+      const updatedBlog = await storage.updateBlog(id, {
         imageUrl: imageResult.url,
         featuredMediaProvider: imageResult.provider
       });
@@ -316,14 +573,14 @@ export async function registerRoutes(
     try {
       // Always refresh trends when the list is requested to ensure dynamic data
       const fetchedTrends = await fetchTrends();
-      
+
       // Ensure we only keep the latest 10
       await storage.clearTrends();
       const top10 = fetchedTrends.slice(0, 10);
       for (const t of top10) {
         await storage.createTrend({ topic: t.topic, volume: t.volume });
       }
-      
+
       // Silent log
     } catch {
       // Silent — cron failures do not affect the app
@@ -412,38 +669,54 @@ export async function registerRoutes(
 
   // --- External Sites Routes ---
 
-  app.get(api.externalSites.list.path, async (req, res) => {
-    const sites = await storage.getExternalSites();
+  app.get(api.externalSites.list.path, requireAuth, async (req: any, res) => {
+    const clientId = req.session?.clientId;
+    if (!clientId) return res.status(401).json({ message: "No client profile" });
+    const sites = await storage.getExternalSites(clientId);
     res.json(sites);
   });
 
-  app.post(api.externalSites.create.path, async (req, res) => {
+  app.post(api.externalSites.create.path, requireAuth, async (req: any, res) => {
     try {
-      const input = api.externalSites.create.input.parse(req.body);
+      const clientId = req.session?.clientId;
+      if (!clientId) return res.status(401).json({ message: "No client profile" });
+      
+      const input = api.externalSites.create.input.parse({ ...req.body, clientId });
       const site = await storage.createExternalSite(input);
       res.status(201).json(site);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
-      throw err;
+      res.status(500).json({ message: "Failed to create site" });
     }
   });
 
-  app.put(api.externalSites.update.path, async (req, res) => {
+  app.put(api.externalSites.update.path, requireAuth, async (req: any, res) => {
     try {
+      const clientId = req.session.clientId;
+      const site = await storage.getExternalSite(Number(req.params.id));
+      if (!site || site.clientId !== clientId) {
+        return res.status(404).json({ message: "Site not found" });
+      }
+
       const input = api.externalSites.update.input.parse(req.body);
-      const site = await storage.updateExternalSite(Number(req.params.id), input);
-      res.json(site);
+      const updated = await storage.updateExternalSite(Number(req.params.id), input);
+      res.json(updated);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
-      throw err;
+      res.status(500).json({ message: "Update failed" });
     }
   });
 
-  app.delete(api.externalSites.delete.path, async (req, res) => {
+  app.delete(api.externalSites.delete.path, requireAuth, async (req: any, res) => {
+    const clientId = req.session.clientId;
+    const site = await storage.getExternalSite(Number(req.params.id));
+    if (!site || site.clientId !== clientId) {
+      return res.status(404).json({ message: "Site not found" });
+    }
     await storage.deleteExternalSite(Number(req.params.id));
     res.status(204).send();
   });
@@ -454,7 +727,7 @@ export async function registerRoutes(
     if (!code || typeof code !== "string") {
       return res.status(400).send("Authorization code is missing.");
     }
-    
+
     try {
       const params = new URLSearchParams();
       params.append("client_id", "135690");
@@ -497,6 +770,7 @@ export async function registerRoutes(
         username: blog_id.toString(),
         password: access_token,
         isEnabled: true,
+        clientId: (req.session as any).clientId, // Associate with current user
       });
 
       res.redirect("/settings?wp_connect=success");
@@ -614,16 +888,22 @@ export async function registerRoutes(
 
   // --- Scheduled Posts Routes ---
 
-  app.get(api.scheduledPosts.list.path, async (req, res) => {
-    const posts = await storage.getScheduledPosts();
+  app.get(api.scheduledPosts.list.path, requireAuth, async (req: any, res) => {
+    const clientId = req.session?.clientId;
+    if (!clientId) return res.status(401).json({ message: "No client profile" });
+    const posts = await storage.getScheduledPosts(clientId);
     res.json(posts);
   });
 
-  app.post(api.scheduledPosts.create.path, async (req, res) => {
+  app.post(api.scheduledPosts.create.path, requireAuth, async (req: any, res) => {
     try {
+      const clientId = req.session?.clientId;
+      if (!clientId) return res.status(401).json({ message: "No client profile" });
+
       const body = {
         ...req.body,
         scheduledAt: req.body.scheduledAt ? new Date(req.body.scheduledAt) : undefined,
+        clientId,
       };
       const input = api.scheduledPosts.create.input.parse(body);
       const post = await storage.createScheduledPost(input);
@@ -636,15 +916,23 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.scheduledPosts.delete.path, async (req, res) => {
+  app.delete(api.scheduledPosts.delete.path, requireAuth, async (req: any, res) => {
+    const clientId = req.session.clientId;
+    const post = await storage.getScheduledPost(Number(req.params.id));
+    if (!post || post.clientId !== clientId) {
+      return res.status(404).json({ message: "Post not found" });
+    }
     await storage.deleteScheduledPost(Number(req.params.id));
     res.status(204).send();
   });
 
-  app.get("/api/blogs/preview/:id", async (req, res) => {
+  app.get("/api/blogs/preview/:id", requireAuth, async (req: any, res) => {
+    const clientId = req.session.clientId;
     const blog = await storage.getBlog(Number(req.params.id));
-    if (!blog) return res.status(404).send("Blog not found");
-    
+    if (!blog || blog.clientId !== clientId) {
+      return res.status(404).send("Blog not found");
+    }
+
     res.send(`
       <!DOCTYPE html>
       <html>

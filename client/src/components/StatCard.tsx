@@ -12,7 +12,7 @@ interface StatCardProps {
 
 export function StatCard({ title, value, icon, trend, trendUp, className }: StatCardProps) {
   return (
-    <div className={cn("dashboard-card p-6 relative group overflow-hidden", className)}>
+    <div className={cn("glass-card p-6 relative group overflow-hidden border-white/20", className)}>
       <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       <div className="relative z-10 flex flex-col h-full">
         <div className="flex justify-between items-start mb-6">
@@ -38,3 +38,16 @@ export function StatCard({ title, value, icon, trend, trendUp, className }: Stat
     </div>
   );
 }
+export function StatCardSkeleton() {
+  return (
+    <div className="glass-card p-6 h-32 space-y-4">
+      <Skeleton className="w-10 h-10 rounded-xl" />
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-8 w-16" />
+      </div>
+    </div>
+  );
+}
+
+import { Skeleton } from "./ui/skeleton";

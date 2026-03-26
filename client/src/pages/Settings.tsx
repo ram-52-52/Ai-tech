@@ -10,9 +10,12 @@ import { Plus, Trash2, Calendar, Link as LinkIcon, CheckCircle2, Clock, Plug, Pe
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { Loader } from "@/components/Loader";
+import { useAuth } from "@/hooks/use-auth";
+import { SEO } from "@/components/SEO";
+import { Skeleton } from "@/components/ui/skeleton";
+import { handleTestConnection } from "@/services/api/settingsAPI";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -36,6 +39,7 @@ export default function Settings() {
   const { mutate: deleteSite, isPending: isDeletingSite } = useDeleteSite();
   const { mutate: createScheduled, isPending: isCreatingScheduled } = useCreateScheduledPost();
   const { mutate: deleteScheduled, isPending: isDeletingScheduled } = useDeleteScheduledPost();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [testingSiteId, setTestingSiteId] = useState<number | null>(null);
   const [editingSiteId, setEditingSiteId] = useState<number | null>(null);
@@ -67,16 +71,13 @@ export default function Settings() {
 
   const testConnection = async (siteId: number) => {
     setTestingSiteId(siteId);
-    try {
-      const res = await apiRequest("POST", `/api/external-sites/${siteId}/test`);
-      const data = await res.json() as { message: string };
-      toast({ title: "Connection Successful", description: data.message });
-    } catch (err: any) {
-      const msg = err?.message ?? "Connection failed";
-      toast({ title: "Connection Failed", description: msg, variant: "destructive" });
-    } finally {
-      setTestingSiteId(null);
+    const res = await handleTestConnection(siteId);
+    if (res.success) {
+      toast({ title: "Connection Successful", description: res.data.message });
+    } else {
+      toast({ title: "Connection Failed", description: res.error || "Connection failed", variant: "destructive" });
     }
+    setTestingSiteId(null);
   };
 
   const [siteForm, setSiteForm] = useState({
@@ -146,6 +147,23 @@ export default function Settings() {
     );
   };
 
+  if (sitesLoading || blogsLoading || scheduledLoading) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-700">
+        <SEO title="Settings" />
+        <Skeleton className="h-20 w-3/4 rounded-3xl" />
+        <div className="glass-panel rounded-[2.5rem] p-8 space-y-6">
+          <Skeleton className="h-8 w-48" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton className="h-12 rounded-xl" />
+            <Skeleton className="h-12 rounded-xl" />
+          </div>
+          <Skeleton className="h-40 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <motion.div 
       variants={containerVariants}
@@ -153,13 +171,17 @@ export default function Settings() {
       animate="show"
       className="space-y-8"
     >
+      <SEO 
+        title="Settings" 
+        description="Configure your external CMS connections and automate your blog publishing schedule." 
+      />
       <motion.div variants={itemVariants}>
-        <h1 className="text-5xl md:text-6xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400 tracking-tight pb-2">Settings</h1>
-        <p className="text-muted-foreground mt-2 text-lg font-medium">Manage external sites and schedule blog posts</p>
+        <h1 className="text-3xl md:text-5xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 tracking-tight pb-2">Settings</h1>
+        <p className="text-muted-foreground mt-2 text-base md:text-lg font-medium">Manage external sites and automate your blog publishing cycle.</p>
       </motion.div>
 
       {/* External Sites Section */}
-      <motion.div variants={itemVariants} className="glass-panel rounded-2xl p-8 space-y-6">
+      <motion.div variants={itemVariants} className="glass-panel rounded-[2.5rem] p-8 space-y-6">
         <div className="border-b border-border/50 pb-4">
           <h2 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
             <LinkIcon className="w-6 h-6 text-primary" />
@@ -376,7 +398,8 @@ export default function Settings() {
                                   variant="ghost"
                                   className="h-8 text-xs font-bold text-primary hover:bg-primary/10 transition-all gap-2"
                                   onClick={() => {
-                                    const code = `<div id="ai-tech-blog-feed" data-client-id="${site.clientId}"></div>\n<script src="https://ai-tech-5l4y.onrender.com/blog-widget.js"></script>`;
+                                    const sid = site.id;
+                                    const code = `<div id="ai-tech-blog-feed" data-site-id="${sid}"></div>\n<script src="https://ai-tech-5l4y.onrender.com/blog-widget.js"></script>`;
                                     navigator.clipboard.writeText(code);
                                     toast({ title: "Copied!", description: "Snippet copied to clipboard" });
                                   }}
@@ -387,7 +410,7 @@ export default function Settings() {
                               </div>
                               <div className="p-4 md:p-6 overflow-x-auto">
                                 <pre className="font-mono text-[10px] md:text-sm leading-relaxed text-slate-300 whitespace-pre">
-{`<div id="ai-tech-blog-feed" data-client-id="${site.clientId}"></div>
+{`<div id="ai-tech-blog-feed" data-site-id="${site.id}"></div>
 <script src="https://ai-tech-5l4y.onrender.com/blog-widget.js"></script>`}
                                 </pre>
                               </div>
@@ -474,7 +497,7 @@ export default function Settings() {
       </motion.div>
 
       {/* Schedule Posts Section */}
-      <motion.div variants={itemVariants} className="glass-panel rounded-2xl p-8 space-y-6">
+      <motion.div variants={itemVariants} className="glass-panel rounded-[2.5rem] p-8 space-y-6">
         <div className="border-b border-border/50 pb-4">
           <h2 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
             <Calendar className="w-6 h-6 text-primary" />

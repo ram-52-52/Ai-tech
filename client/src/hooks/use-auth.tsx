@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { handleGetCurrentUser, handleLogin, handleLogout } from "@/services/api/authAPI";
 
 type User = {
   id: number;
   clientId: string;
   username?: string;
+  role: 'user' | 'superadmin';
 };
 
 type AuthContextType = {
@@ -22,55 +24,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetch("/api/me")
+    handleGetCurrentUser()
       .then((res) => {
-        if (res.ok) return res.json();
-        throw new Error("Not logged in");
+        if (res.success) setUser(res.data);
+        else setUser(null);
       })
-      .then((data) => setUser(data))
       .catch(() => setUser(null))
       .finally(() => setIsLoading(false));
   }, []);
 
   const login = async (username: string, password: string) => {
-    try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-      
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.message || "Invalid username or password");
-      }
-      
-      setUser(data.user);
+    const res = await handleLogin({ username, password });
+    
+    if (res.success) {
+      setUser(res.data.user);
       toast({
         title: "Welcome back!",
         description: "You have successfully logged in.",
       });
-    } catch (error: any) {
+    } else {
       toast({
         title: "Login Failed",
-        description: error.message,
+        description: res.error || "Invalid username or password",
         variant: "destructive",
       });
-      throw error;
+      throw new Error(res.error || "Login failed");
     }
   };
 
   const logout = async () => {
-    try {
-      await fetch("/api/logout", { method: "POST" });
+    const res = await handleLogout();
+    if (res.success) {
       setUser(null);
       toast({
         title: "Logged out",
         description: "You have been logged out successfully.",
       });
-    } catch (error) {
-      console.error("Logout failed", error);
+    } else {
+      console.error("Logout failed", res.error);
     }
   };
 

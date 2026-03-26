@@ -1,32 +1,43 @@
 import { db } from "./db";
-import { blogs, trends, externalSites, scheduledPosts, users, type Blog, type InsertBlog, type Trend, type ExternalSite, type InsertExternalSite, type ScheduledPost, type InsertScheduledPost, type User, type InsertUser } from "../shared/schema";
-import { eq, desc, lte, and, or, like } from "drizzle-orm";
+import { blogs, trends, externalSites, scheduledPosts, users, logs, type Blog, type InsertBlog, type Trend, type ExternalSite, type InsertExternalSite, type ScheduledPost, type InsertScheduledPost, type User, type InsertUser, type Log, type InsertLog } from "../shared/schema";
+import { eq, desc, lte, and, or, like, sql } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { BlogModel, TrendModel, ExternalSiteModel, ScheduledPostModel, UserModel } from "./models";
+import { BlogModel, TrendModel, ExternalSiteModel, ScheduledPostModel, UserModel, LogModel } from "./models";
 
 export interface IStorage {
   // Users
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  
+  getUserById(id: number): Promise<User | undefined>;
+  getUsers(): Promise<User[]>;
+  createUser(user: InsertUser & { role?: string; plan?: string }): Promise<User>;
+  deleteUser(id: number): Promise<void>;
+  deleteUserData(clientId: string): Promise<void>;
+  incrementUserBlogCount(userId: number): Promise<void>;
+  getGlobalStats(): Promise<{
+    totalUsers: number;
+    totalBlogs: number;
+    totalPublished: number;
+    totalDrafts: number;
+  }>;
+
   // Blogs
-  getBlogs(): Promise<Blog[]>;
+  getBlogs(clientId?: string): Promise<Blog[]>;
   getBlog(id: number): Promise<Blog | undefined>;
   getBlogBySlug(slug: string): Promise<Blog | undefined>;
   getBlogBySlugAndClientId(slug: string, clientId: string): Promise<Blog | undefined>;
   createBlog(blog: InsertBlog): Promise<Blog>;
   updateBlog(id: number, blog: Partial<InsertBlog>): Promise<Blog>;
   deleteBlog(id: number): Promise<void>;
-  
+
   // Trends
   getTrends(): Promise<Trend[]>;
   createTrend(trend: { topic: string; volume?: number }): Promise<Trend>;
   clearTrends(): Promise<void>;
 
   // External Sites
-  getExternalSites(): Promise<ExternalSite[]>;
+  getExternalSites(clientId?: string): Promise<ExternalSite[]>;
   getExternalSite(id: number): Promise<ExternalSite | undefined>;
   getExternalSiteByClientId(clientId: string): Promise<ExternalSite | undefined>;
   getExternalSiteByOrigin(origin: string): Promise<ExternalSite | undefined>;
@@ -35,49 +46,143 @@ export interface IStorage {
   deleteExternalSite(id: number): Promise<void>;
 
   // Scheduled Posts
-  getScheduledPosts(): Promise<ScheduledPost[]>;
+  getScheduledPosts(clientId?: string): Promise<ScheduledPost[]>;
   getScheduledPost(id: number): Promise<ScheduledPost | undefined>;
   getPendingDueScheduledPosts(): Promise<ScheduledPost[]>;
   createScheduledPost(post: InsertScheduledPost): Promise<ScheduledPost>;
   updateScheduledPost(id: number, updates: Partial<Pick<ScheduledPost, "status" | "postedAt" | "errorMessage">>): Promise<ScheduledPost>;
   deleteScheduledPost(id: number): Promise<void>;
+
+  // Logs
+  getLogs(options?: { userId?: number; page?: number; limit?: number }): Promise<{ logs: Log[]; total: number }>;
+  createLog(log: InsertLog & { userId?: number; username?: string }): Promise<Log>;
 }
 
 export class MongoStorage implements IStorage {
   async getUserByUsername(username: string): Promise<User | undefined> {
     const doc = await UserModel.findOne({ username });
-    return doc ? (doc.toObject() as User) : undefined;
+    if (!doc) return undefined;
+    const obj = doc.toObject();
+    return { ...obj, role: obj.role || 'user' } as User;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const user = new UserModel(insertUser);
+  async getUserById(id: number): Promise<User | undefined> {
+    const doc = await UserModel.findOne({ id });
+    if (!doc) return undefined;
+    const obj = doc.toObject();
+    return { ...obj, role: obj.role || 'user' } as User;
+  }
+
+  async getUsers(): Promise<User[]> {
+    const docs = await UserModel.find().sort({ createdAt: -1 });
+    return docs.map(doc => {
+      const obj = doc.toObject();
+      return { ...obj, role: obj.role || 'user' } as User;
+    });
+  }
+
+  async createUser(insertUser: InsertUser & { role?: string; plan?: string }): Promise<User> {
+    const user = new UserModel({ 
+      ...insertUser, 
+      role: insertUser.role || 'user',
+      plan: insertUser.plan || 'Free Trial'
+    });
     await user.save();
     return user.toObject() as User;
   }
 
-  async getBlogs(): Promise<Blog[]> {
+  async deleteUser(id: number): Promise<void> {
+    await UserModel.deleteOne({ id });
+  }
+
+  async deleteUserData(clientId: string): Promise<void> {
+    await Promise.all([
+      BlogModel.deleteMany({ clientId }),
+      ScheduledPostModel.deleteMany({ clientId }),
+      ExternalSiteModel.deleteMany({ clientId })
+    ]);
+  }
+
+  async incrementUserBlogCount(userId: number): Promise<void> {
+    await UserModel.findOneAndUpdate({ id: userId }, { $inc: { blogsGeneratedThisMonth: 1 } });
+  }
+
+  async getGlobalStats(): Promise<{ totalUsers: number; totalBlogs: number; totalPublished: number; totalDrafts: number; }> {
+    const totalBlogs = await BlogModel.countDocuments();
+    const totalPublished = await BlogModel.countDocuments({ isPublished: true });
+    const totalDrafts = await BlogModel.countDocuments({ isPublished: false });
+    
+    // Count only users who are NOT superadmins
+    const users = await UserModel.find({ role: { $ne: 'superadmin' } });
+    const totalUsers = users.length;
+    const logMsg = `[Storage] getGlobalStats: Found ${totalUsers} clients. Users: ${users.map(u => u.username).join(', ')}\n`;
+    fs.appendFileSync("debug.log", logMsg);
+
+    return { totalUsers, totalBlogs, totalPublished, totalDrafts };
+  }
+
+  async getBlogs(clientId?: string): Promise<Blog[]> {
     try {
-      const docs = await BlogModel.find().sort({ createdAt: -1 });
+      // If clientId is provided, find blogs for that client.
+      // If clientId is undefined (Super Admin case), find all blogs.
+      // If clientId is null or empty string, it's an invalid/new profile, so return empty array.
+      if (clientId === "" || clientId === null) {
+        return [];
+      }
+      
+      const query = clientId ? { clientId } : {};
+      const docs = await BlogModel.find(query).sort({ createdAt: -1 });
       return docs.map(doc => {
         const obj = doc.toObject();
         return {
           ...obj,
-          id: obj.id || (doc as any).id || 0
+          id: obj.id || (doc as any).id || 0,
+          metaDescription: obj.metaDescription || null,
+          tags: obj.tags || null,
+          imageUrl: obj.imageUrl || null,
+          featuredMediaProvider: obj.featuredMediaProvider || null,
+          isPublished: obj.isPublished ?? false,
+          publishedAt: obj.publishedAt || null,
+          scheduledAt: obj.scheduledAt || null,
+          createdAt: obj.createdAt || new Date()
         } as Blog;
       });
-    } catch {
-      throw new Error("Failed to load blogs");
+    } catch (err: any) {
+      console.error("[Storage] getBlogs error:", err);
+      return [];
     }
   }
 
   async getBlog(id: number): Promise<Blog | undefined> {
     const doc = await BlogModel.findOne({ id });
-    return doc ? (doc.toObject() as Blog) : undefined;
+    const obj = doc?.toObject();
+    return obj ? {
+      ...obj,
+      metaDescription: obj.metaDescription || null,
+      tags: obj.tags || null,
+      imageUrl: obj.imageUrl || null,
+      featuredMediaProvider: obj.featuredMediaProvider || null,
+      isPublished: obj.isPublished ?? false,
+      publishedAt: obj.publishedAt || null,
+      scheduledAt: obj.scheduledAt || null,
+      createdAt: obj.createdAt || new Date()
+    } as Blog : undefined;
   }
 
   async getBlogBySlug(slug: string): Promise<Blog | undefined> {
     const doc = await BlogModel.findOne({ slug });
-    return doc ? (doc.toObject() as Blog) : undefined;
+    const obj = doc?.toObject();
+    return obj ? {
+      ...obj,
+      metaDescription: obj.metaDescription || null,
+      tags: obj.tags || null,
+      imageUrl: obj.imageUrl || null,
+      featuredMediaProvider: obj.featuredMediaProvider || null,
+      isPublished: obj.isPublished ?? false,
+      publishedAt: obj.publishedAt || null,
+      scheduledAt: obj.scheduledAt || null,
+      createdAt: obj.createdAt || new Date()
+    } as Blog : undefined;
   }
 
   /**
@@ -86,7 +191,18 @@ export class MongoStorage implements IStorage {
    */
   async getBlogBySlugAndClientId(slug: string, clientId: string): Promise<Blog | undefined> {
     const doc = await BlogModel.findOne({ slug, clientId, isPublished: true });
-    return doc ? (doc.toObject() as Blog) : undefined;
+    const obj = doc?.toObject();
+    return obj ? {
+      ...obj,
+      metaDescription: obj.metaDescription || null,
+      tags: obj.tags || null,
+      imageUrl: obj.imageUrl || null,
+      featuredMediaProvider: obj.featuredMediaProvider || null,
+      isPublished: obj.isPublished ?? false,
+      publishedAt: obj.publishedAt || null,
+      scheduledAt: obj.scheduledAt || null,
+      createdAt: obj.createdAt || new Date()
+    } as Blog : undefined;
   }
 
   async createBlog(insertBlog: InsertBlog): Promise<Blog> {
@@ -120,9 +236,14 @@ export class MongoStorage implements IStorage {
     await TrendModel.deleteMany({});
   }
 
-  async getExternalSites(): Promise<ExternalSite[]> {
-    const docs = await ExternalSiteModel.find().sort({ createdAt: -1 });
-    return docs.map(doc => doc.toObject() as ExternalSite);
+  async getExternalSites(clientId?: string): Promise<ExternalSite[]> {
+    try {
+      const query = clientId ? { clientId } : {};
+      const docs = await ExternalSiteModel.find(query).sort({ createdAt: -1 });
+      return docs.map(doc => doc.toObject() as ExternalSite);
+    } catch {
+      return [];
+    }
   }
 
   async getExternalSite(id: number): Promise<ExternalSite | undefined> {
@@ -131,7 +252,7 @@ export class MongoStorage implements IStorage {
   }
 
   async getExternalSiteByClientId(clientId: string): Promise<ExternalSite | undefined> {
-    const doc = await ExternalSiteModel.findOne({ clientId });
+    const doc = await ExternalSiteModel.findOne({ clientId, siteType: 'embed_widget', isEnabled: true });
     return doc ? (doc.toObject() as ExternalSite) : undefined;
   }
 
@@ -139,7 +260,7 @@ export class MongoStorage implements IStorage {
     // Basic normalization: remove trailing slash and protocol for comparison if needed, 
     // but here we match the full siteUrl stored.
     const normalizedOrigin = origin.replace(/\/$/, "");
-    const doc = await ExternalSiteModel.findOne({ 
+    const doc = await ExternalSiteModel.findOne({
       $or: [
         { siteUrl: normalizedOrigin },
         { siteUrl: normalizedOrigin + "/" }
@@ -149,8 +270,8 @@ export class MongoStorage implements IStorage {
   }
 
   async createExternalSite(site: InsertExternalSite): Promise<ExternalSite> {
-    const clientId = site.siteType === "embed_widget" ? crypto.randomUUID() : null;
-    const doc = new ExternalSiteModel({ ...site, clientId });
+    // Preserve the user's clientId for tenant isolation on ALL site types
+    const doc = new ExternalSiteModel({ ...site });
     await doc.save();
     return doc.toObject() as ExternalSite;
   }
@@ -165,9 +286,22 @@ export class MongoStorage implements IStorage {
     await ExternalSiteModel.deleteOne({ id });
   }
 
-  async getScheduledPosts(): Promise<ScheduledPost[]> {
-    const docs = await ScheduledPostModel.find().sort({ createdAt: -1 });
-    return docs.map(doc => doc.toObject() as ScheduledPost);
+  async getScheduledPosts(clientId?: string): Promise<ScheduledPost[]> {
+    try {
+      const query = clientId ? { clientId } : {};
+      const docs = await ScheduledPostModel.find(query).sort({ scheduledAt: -1 });
+      return docs.map(doc => {
+        const obj = doc.toObject();
+        return {
+          ...obj,
+          clientId: obj.clientId || null,
+          postedAt: obj.postedAt || null,
+          errorMessage: obj.errorMessage || null,
+        } as ScheduledPost;
+      });
+    } catch {
+      throw new Error("Failed to load scheduled posts");
+    }
   }
 
   async getScheduledPost(id: number): Promise<ScheduledPost | undefined> {
@@ -199,6 +333,30 @@ export class MongoStorage implements IStorage {
   async deleteScheduledPost(id: number): Promise<void> {
     await ScheduledPostModel.deleteOne({ id });
   }
+
+  async getLogs(options: { userId?: number; page?: number; limit?: number } = {}): Promise<{ logs: Log[]; total: number }> {
+    const { userId, page = 1, limit = 20 } = options;
+    const query = userId ? { userId } : {};
+    const total = await LogModel.countDocuments(query);
+    const docs = await LogModel.find(query)
+      .sort({ timestamp: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+    
+    return {
+      logs: docs.map(doc => doc.toObject() as Log),
+      total
+    };
+  }
+
+  async createLog(insertLog: InsertLog & { userId?: number; username?: string }): Promise<Log> {
+    const log = new LogModel({
+      ...insertLog,
+      timestamp: new Date()
+    });
+    await log.save();
+    return log.toObject() as Log;
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -212,7 +370,45 @@ export class DatabaseStorage implements IStorage {
     return newUser;
   }
 
-  async getBlogs(): Promise<Blog[]> {
+  async getUserById(_id: number): Promise<User | undefined> {
+    throw new Error("Not implemented");
+  }
+
+  async getUsers(): Promise<User[]> {
+    throw new Error("Not implemented");
+  }
+
+  async deleteUser(_id: number): Promise<void> {
+    throw new Error("Not implemented");
+  }
+
+  async deleteUserData(_clientId: string): Promise<void> {
+    throw new Error("Not implemented");
+  }
+
+  async incrementUserBlogCount(userId: number): Promise<void> {
+    await db.update(users)
+      .set({ blogsGeneratedThisMonth: sql`${users.blogsGeneratedThisMonth} + 1` })
+      .where(eq(users.id, userId));
+  }
+
+  async getGlobalStats(): Promise<{ totalUsers: number; totalBlogs: number; totalPublished: number; totalDrafts: number; }> {
+    // Basic implementation for SQL (Drizzle)
+    // In a real app we'd use select count()
+    const allUsers = await db.select().from(users).where(eq(users.role, 'user'));
+    const allBlogs = await db.select().from(blogs);
+    return {
+      totalUsers: allUsers.length,
+      totalBlogs: allBlogs.length,
+      totalPublished: allBlogs.filter((b: Blog) => b.isPublished).length,
+      totalDrafts: allBlogs.filter((b: Blog) => !b.isPublished).length
+    };
+  }
+
+  async getBlogs(clientId?: string): Promise<Blog[]> {
+    if (clientId) {
+      return await db.select().from(blogs).where(eq(blogs.clientId, clientId)).orderBy(desc(blogs.createdAt));
+    }
     return await db.select().from(blogs).orderBy(desc(blogs.createdAt));
   }
 
@@ -238,8 +434,8 @@ export class DatabaseStorage implements IStorage {
 
   async createBlog(insertBlog: InsertBlog): Promise<Blog> {
     const [blog] = await db.insert(blogs).values({
-        ...insertBlog,
-        publishedAt: new Date(),
+      ...insertBlog,
+      publishedAt: new Date(),
     }).returning();
     return blog;
   }
@@ -269,7 +465,10 @@ export class DatabaseStorage implements IStorage {
     await db.delete(trends);
   }
 
-  async getExternalSites(): Promise<ExternalSite[]> {
+  async getExternalSites(clientId?: string): Promise<ExternalSite[]> {
+    if (clientId) {
+      return await db.select().from(externalSites).where(eq(externalSites.clientId, clientId)).orderBy(desc(externalSites.createdAt));
+    }
     return await db.select().from(externalSites).orderBy(desc(externalSites.createdAt));
   }
 
@@ -279,7 +478,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getExternalSiteByClientId(clientId: string): Promise<ExternalSite | undefined> {
-    const [site] = await db.select().from(externalSites).where(eq(externalSites.clientId, clientId));
+    const [site] = await db.select().from(externalSites).where(
+      and(eq(externalSites.clientId, clientId), eq(externalSites.siteType, 'embed_widget'), eq(externalSites.isEnabled, true))
+    );
     return site;
   }
 
@@ -295,8 +496,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createExternalSite(site: InsertExternalSite): Promise<ExternalSite> {
-    const clientId = site.siteType === "embed_widget" ? crypto.randomUUID() : null;
-    const [newSite] = await db.insert(externalSites).values({ ...site, clientId }).returning();
+    // Preserve the user's clientId for tenant isolation on ALL site types
+    const [newSite] = await db.insert(externalSites).values({ ...site }).returning();
     return newSite;
   }
 
@@ -312,8 +513,11 @@ export class DatabaseStorage implements IStorage {
     await db.delete(externalSites).where(eq(externalSites.id, id));
   }
 
-  async getScheduledPosts(): Promise<ScheduledPost[]> {
-    return await db.select().from(scheduledPosts).orderBy(desc(scheduledPosts.createdAt));
+  async getScheduledPosts(clientId?: string): Promise<ScheduledPost[]> {
+    if (clientId) {
+      return await db.select().from(scheduledPosts).where(eq(scheduledPosts.clientId, clientId)).orderBy(desc(scheduledPosts.scheduledAt));
+    }
+    return await db.select().from(scheduledPosts).orderBy(desc(scheduledPosts.scheduledAt));
   }
 
   async getScheduledPost(id: number): Promise<ScheduledPost | undefined> {
@@ -346,6 +550,21 @@ export class DatabaseStorage implements IStorage {
   async deleteScheduledPost(id: number): Promise<void> {
     await db.delete(scheduledPosts).where(eq(scheduledPosts.id, id));
   }
+
+  async getLogs(options: { userId?: number; page?: number; limit?: number } = {}): Promise<{ logs: Log[]; total: number }> {
+    // Basic placeholder for SQL backend
+    const { userId, page = 1, limit = 20 } = options;
+    const all = await db.select().from(logs).where(userId ? eq(logs.userId, userId) : undefined).orderBy(desc(logs.timestamp));
+    return {
+      logs: all.slice((page - 1) * limit, page * limit),
+      total: all.length
+    };
+  }
+
+  async createLog(insertLog: InsertLog & { userId?: number; username?: string }): Promise<Log> {
+    const [log] = await db.insert(logs).values(insertLog).returning();
+    return log;
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -376,7 +595,7 @@ export class MemStorage implements IStorage {
     this.storagePath = path.resolve(process.cwd(), "tmp-storage.json");
 
     this.loadFromDisk();
-    
+
     // Ensure default sites exist if none loaded
     if (this.externalSites.size === 0) {
       this.initDefaults();
@@ -439,16 +658,17 @@ export class MemStorage implements IStorage {
         this.siteId = data.siteId;
         this.postId = data.postId;
         this.userId = data.userId || 1;
-        
+
         // Convert date strings back to Date objects and check for env overrides
         this.users.forEach(u => u.createdAt = new Date(u.createdAt));
         this.blogs.forEach(b => {
           b.createdAt = new Date(b.createdAt);
           if (b.publishedAt) b.publishedAt = new Date(b.publishedAt);
+          if (b.scheduledAt) b.scheduledAt = new Date(b.scheduledAt); // Added
         });
-        
+
         this.trends.forEach(t => t.createdAt = new Date(t.createdAt));
-        
+
         this.externalSites.forEach(s => {
           s.createdAt = new Date(s.createdAt);
           // Override placeholder with env if available
@@ -477,17 +697,56 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).find(u => u.username === username);
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createUser(insertUser: InsertUser & { role?: string; plan?: string }): Promise<User> {
     const id = this.userId++;
-    const user: User = { ...insertUser, id, createdAt: new Date() };
+    const user: User = { 
+      ...insertUser, 
+      id, 
+      createdAt: new Date(), 
+      role: insertUser.role || 'user',
+      plan: insertUser.plan || 'Free Trial',
+      blogsGeneratedThisMonth: 0
+    };
     this.users.set(id, user);
     this.saveToDisk();
     return user;
   }
 
-  async getBlogs(): Promise<Blog[]> {
+  async getUserById(id: number): Promise<User | undefined> {
     this.loadFromDisk();
-    return Array.from(this.blogs.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return this.users.get(id);
+  }
+
+  async getUsers(): Promise<User[]> {
+    this.loadFromDisk();
+    return Array.from(this.users.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    this.users.delete(id);
+    this.saveToDisk();
+  }
+
+  async deleteUserData(clientId: string): Promise<void> {
+    const blogsToDelete = Array.from(this.blogs.values()).filter(b => b.clientId === clientId);
+    blogsToDelete.forEach(b => this.blogs.delete(b.id));
+
+    const sitesToDelete = Array.from(this.externalSites.values()).filter(s => s.clientId === clientId);
+    sitesToDelete.forEach(s => this.externalSites.delete(s.id));
+
+    const postsToDelete = Array.from(this.scheduledPosts.values()).filter(p => p.clientId === clientId);
+    postsToDelete.forEach(p => this.scheduledPosts.delete(p.id));
+
+    this.saveToDisk();
+  }
+
+  async getBlogs(clientId?: string): Promise<Blog[]> {
+    this.loadFromDisk();
+    let allBlogs = Array.from(this.blogs.values());
+    if (clientId) {
+      allBlogs = allBlogs.filter(b => b.clientId === clientId);
+    }
+    return allBlogs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async getBlog(id: number): Promise<Blog | undefined> {
@@ -510,17 +769,18 @@ export class MemStorage implements IStorage {
 
   async createBlog(insertBlog: InsertBlog): Promise<Blog> {
     const id = this.blogId++;
-    const blog: Blog = { 
-      ...insertBlog, 
-      id, 
+    const blog: Blog = {
+      ...insertBlog,
+      id,
       clientId: insertBlog.clientId ?? null,
-      createdAt: new Date(), 
-      metaDescription: insertBlog.metaDescription ?? null, 
-      tags: insertBlog.tags ?? null, 
-      imageUrl: insertBlog.imageUrl ?? null, 
+      createdAt: new Date(),
+      metaDescription: insertBlog.metaDescription ?? null,
+      tags: insertBlog.tags ?? null,
+      imageUrl: insertBlog.imageUrl ?? null,
       featuredMediaProvider: insertBlog.featuredMediaProvider ?? null,
-      isPublished: insertBlog.isPublished ?? false, 
-      publishedAt: new Date() 
+      isPublished: insertBlog.isPublished ?? false,
+      publishedAt: insertBlog.publishedAt ?? null,
+      scheduledAt: insertBlog.scheduledAt ?? null
     };
     this.blogs.set(id, blog);
     this.saveToDisk();
@@ -556,29 +816,36 @@ export class MemStorage implements IStorage {
     this.trends.clear();
   }
 
-  async getExternalSites(): Promise<ExternalSite[]> {
-    return Array.from(this.externalSites.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  async getExternalSites(clientId?: string): Promise<ExternalSite[]> {
+    this.loadFromDisk();
+    let allSites = Array.from(this.externalSites.values());
+    if (clientId) {
+      allSites = allSites.filter(s => s.clientId === clientId);
+    }
+    return allSites.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async getExternalSite(id: number): Promise<ExternalSite | undefined> {
+    this.loadFromDisk();
     return this.externalSites.get(id);
   }
 
   async getExternalSiteByClientId(clientId: string): Promise<ExternalSite | undefined> {
-    return Array.from(this.externalSites.values()).find(s => s.clientId === clientId);
+    this.loadFromDisk();
+    return Array.from(this.externalSites.values()).find(s => s.clientId === clientId && s.siteType === 'embed_widget' && s.isEnabled);
   }
 
   async getExternalSiteByOrigin(origin: string): Promise<ExternalSite | undefined> {
     const normalizedOrigin = origin.replace(/\/$/, "");
-    return Array.from(this.externalSites.values()).find(s => 
+    return Array.from(this.externalSites.values()).find(s =>
       s.siteUrl.replace(/\/$/, "") === normalizedOrigin
     );
   }
 
   async createExternalSite(site: InsertExternalSite): Promise<ExternalSite> {
     const id = this.siteId++;
-    const clientId = site.siteType === "embed_widget" ? crypto.randomUUID() : null;
-    const newSite: ExternalSite = { ...site, id, clientId, createdAt: new Date(), isEnabled: site.isEnabled ?? true };
+    // Preserve the user's clientId for tenant isolation on ALL site types
+    const newSite: ExternalSite = { ...site, id, clientId: site.clientId ?? null, createdAt: new Date(), isEnabled: site.isEnabled ?? true };
     this.externalSites.set(id, newSite);
     this.saveToDisk();
     return newSite;
@@ -598,8 +865,13 @@ export class MemStorage implements IStorage {
     this.saveToDisk();
   }
 
-  async getScheduledPosts(): Promise<ScheduledPost[]> {
-    return Array.from(this.scheduledPosts.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  async getScheduledPosts(clientId?: string): Promise<ScheduledPost[]> {
+    this.loadFromDisk();
+    let allPosts = Array.from(this.scheduledPosts.values());
+    if (clientId) {
+      allPosts = allPosts.filter(p => p.clientId === clientId);
+    }
+    return allPosts.sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime());
   }
 
   async getScheduledPost(id: number): Promise<ScheduledPost | undefined> {
@@ -611,12 +883,20 @@ export class MemStorage implements IStorage {
     return Array.from(this.scheduledPosts.values()).filter(p => p.status === "pending" && p.scheduledAt <= now);
   }
 
-  async createScheduledPost(post: InsertScheduledPost): Promise<ScheduledPost> {
+  async createScheduledPost(insertScheduledPost: InsertScheduledPost): Promise<ScheduledPost> {
     const id = this.postId++;
-    const newPost: ScheduledPost = { ...post, id, createdAt: new Date(), status: post.status ?? "pending", postedAt: null, errorMessage: null };
-    this.scheduledPosts.set(id, newPost);
+    const post: ScheduledPost = {
+      ...insertScheduledPost,
+      id,
+      clientId: insertScheduledPost.clientId ?? null,
+      status: "pending",
+      postedAt: null,
+      errorMessage: null,
+      createdAt: new Date(),
+    };
+    this.scheduledPosts.set(id, post);
     this.saveToDisk();
-    return newPost;
+    return post;
   }
 
   async updateScheduledPost(id: number, updates: Partial<Pick<ScheduledPost, "status" | "postedAt" | "errorMessage">>): Promise<ScheduledPost> {
@@ -632,8 +912,37 @@ export class MemStorage implements IStorage {
     this.scheduledPosts.delete(id);
     this.saveToDisk();
   }
+
+  async incrementUserBlogCount(userId: number): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) {
+      const currentCount = user.blogsGeneratedThisMonth || 0;
+      this.users.set(userId, { ...user, blogsGeneratedThisMonth: currentCount + 1 });
+      this.saveToDisk();
+    }
+  }
+
+  async getGlobalStats(): Promise<{ totalUsers: number; totalBlogs: number; totalPublished: number; totalDrafts: number; }> {
+    const allUsers = Array.from(this.users.values()).filter(u => u.role !== 'superadmin');
+    const allBlogs = Array.from(this.blogs.values());
+    return {
+      totalUsers: allUsers.length,
+      totalBlogs: allBlogs.length,
+      totalPublished: allBlogs.filter(b => b.isPublished).length,
+      totalDrafts: allBlogs.filter(b => !b.isPublished).length
+    };
+  }
+
+  async getLogs(options: { userId?: number; page?: number; limit?: number } = {}): Promise<{ logs: Log[]; total: number }> {
+    return { logs: [], total: 0 };
+  }
+
+  async createLog(insertLog: InsertLog & { userId?: number; username?: string }): Promise<Log> {
+    const id = Math.floor(Math.random() * 1000000);
+    return { ...insertLog, id, timestamp: new Date() } as Log;
+  }
 }
 
-export const storage = process.env.MONGODB_URI 
-  ? new MongoStorage() 
+export const storage = process.env.MONGODB_URI
+  ? new MongoStorage()
   : (process.env.DATABASE_URL ? new DatabaseStorage() : new MemStorage());
