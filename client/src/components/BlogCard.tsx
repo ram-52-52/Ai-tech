@@ -33,80 +33,72 @@ export function BlogCard({ blog }: BlogCardProps) {
     <motion.article 
       whileHover={{ y: -8 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className="glass-card overflow-hidden flex flex-col h-full group relative border-white/20 hover:border-primary/50 hover:shadow-[0_0_40px_rgba(99,102,241,0.2)] transition-all duration-500"
+      className="premium-card overflow-hidden flex flex-col h-full group relative border border-neutral-200 dark:border-neutral-800 hover:border-orange-500 transition-all duration-300 bg-white dark:bg-neutral-900 rounded-[2rem] shadow-sm hover:shadow-xl"
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
-      <div className="h-48 bg-secondary/50 relative overflow-hidden">
+      {/* Image Section */}
+      <div className="h-52 bg-neutral-100 dark:bg-neutral-800 relative overflow-hidden shrink-0 border-b border-neutral-200 dark:border-neutral-800">
         {blog.imageUrl ? (
           <img 
             src={blog.imageUrl} 
             alt={blog.title} 
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
-            <span className="text-6xl font-display font-bold">Ab.</span>
+          <div className="w-full h-full flex items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+            <span className="text-4xl font-bold text-neutral-200 dark:text-neutral-800 tracking-tighter">AI</span>
           </div>
         )}
-        <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
-          {isSuperAdmin && (blog as any).author && (
-            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter bg-indigo-600 text-white shadow-lg shadow-indigo-500/40 border border-white/20">
-              Client: {(blog as any).author}
-            </span>
-          )}
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md shadow-sm border border-white/10 ${
+        
+        {/* Status Badge */}
+        <div className="absolute top-4 right-4 z-20">
+          <div className={`px-3 py-1 rounded-lg text-xs md:text-sm font-bold tracking-wide shadow-md ${
             blog.isPublished 
-              ? "bg-emerald-500/90 text-white" 
-              : "bg-amber-500/90 text-white"
+              ? "bg-emerald-500 text-white" 
+              : "bg-orange-500 text-white shadow-xl shadow-orange-500/20"
           }`}>
-            {blog.isPublished ? "Published" : "Draft"}
-          </span>
+            {blog.isPublished ? "Published" : "Drafting"}
+          </div>
         </div>
       </div>
       
+      {/* Content Section */}
       <div className="p-6 flex-1 flex flex-col">
-        <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold mb-3">
-          <Calendar className="w-3 h-3 text-muted-foreground" />
-          <span className="text-muted-foreground">{format(new Date(blog.createdAt), "MMM d, yyyy")}</span>
-          {(blog.topic || (blog.tags?.[0])) && (
+        <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-neutral-400 dark:text-neutral-500 mb-3 tracking-tight">
+          <Calendar className="w-3.5 h-3.5 text-orange-500" />
+          <span>{format(new Date(blog.createdAt), "MMM dd, yyyy")}</span>
+          {isSuperAdmin && (blog as any).author && (
             <>
-              <span className="text-muted-foreground/30">•</span>
-              <span className="text-primary line-clamp-1 max-w-[150px]">
-                {((blog.topic && !["WEB DEVELOPMENT", "CLIMATE CHANGE", "WEB-DEVELOPMENT", "CLIMATE-CHANGE"].includes(blog.topic.toUpperCase())) 
-                  ? blog.topic 
-                  : (blog.title.split('\n')[0].replace(/^["']|["']$/g, '').replace(/^(option|title|choice)\s*\d+\s*[:.-]\s*/gi, '').replace(/^\d+\s*[:.-]\s*/, '').substring(0, 30))
-                ) || blog.tags?.[0]}
-              </span>
+              <span className="mx-1">•</span>
+              <span className="text-orange-500/80 font-bold">{(blog as any).author.split('@')[0]}</span>
             </>
           )}
         </div>
         
-        <h3 className="text-lg font-bold font-display text-foreground mb-2 line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 dark:text-white mb-2 line-clamp-2 leading-snug group-hover:text-orange-500 transition-colors tracking-tight">
           {(() => {
             let t = blog.title.split('\n')[0].trim();
             t = t.replace(/^["']|["']$/g, ''); 
             t = t.replace(/^(option|title|choice)\s*\d+\s*[:.-]\s*/gi, ''); 
             t = t.replace(/^\d+\s*[:.-]\s*/, ''); 
-            if (t.toLowerCase().includes('" or "')) t = t.split('" or "')[0];
-            if (t.toLowerCase().includes(' or ')) t = t.split(' or ')[0];
             return t.trim();
           })()}
         </h3>
         
-        <p className="text-muted-foreground text-sm line-clamp-2 mb-6 flex-1">
-          {blog.metaDescription || "No description provided."}
+        <p className="text-neutral-500 dark:text-neutral-400 text-xs md:text-sm line-clamp-2 mb-6 flex-1 font-medium leading-relaxed tracking-tight">
+          {blog.metaDescription || "Click to view the full content of this blog post and manage its details."}
         </p>
         
-        <div className="flex items-center gap-2 pt-4 border-t border-border/50 mt-auto">
-          <Button variant="ghost" size="sm" aria-label={`View ${blog.title}`} className="flex-1 bg-secondary/30 hover:bg-primary hover:text-white transition-all rounded-xl" asChild>
+        {/* Actions */}
+        <div className="flex items-center gap-2 pt-4 border-t border-neutral-100 dark:border-neutral-800 mt-auto">
+          <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl text-sm md:text-base font-bold tracking-tight bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-800 hover:bg-orange-500 hover:text-white transition-all duration-300 shadow-sm text-neutral-900 dark:text-white" asChild>
             <Link href={`/blogs/${blog.id}/view`}>
-              <Eye className="w-4 h-4 mr-2" />
-              View
+              <Eye className="w-3.5 h-3.5 mr-2" />
+              View Post
             </Link>
           </Button>
-          <Button variant="outline" size="icon" aria-label={`Edit ${blog.title}`} className="h-9 w-9 shrink-0 hover:bg-secondary rounded-xl" asChild>
+          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-xl bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border-neutral-200 dark:border-neutral-800 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white shadow-sm" asChild>
             <Link href={`/blogs/${blog.id}`}>
-              <Edit2 className="w-4 h-4" />
+              <Edit2 className="w-3.5 h-3.5" />
             </Link>
           </Button>
           <AlertDialog>
@@ -114,32 +106,32 @@ export function BlogCard({ blog }: BlogCardProps) {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-9 w-9 shrink-0 text-destructive hover:text-white hover:bg-destructive transition-colors"
+                className="h-10 w-10 shrink-0 bg-red-500/5 text-red-500/50 hover:text-white hover:bg-red-500 transition-all duration-300 rounded-xl"
                 disabled={isDeleting}
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5" />
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="glass-panel border-white/20 dark:border-white/10 shadow-2xl">
+            <AlertDialogContent className="w-[95vw] max-w-md md:max-w-lg lg:max-w-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[2rem] p-4 md:p-8 shadow-2xl">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-foreground font-display text-xl">Delete Blog Post?</AlertDialogTitle>
-                <AlertDialogDescription className="text-muted-foreground text-base">
-                  This action cannot be undone. This will permanently delete your blog post <span className="font-semibold text-foreground">"{blog.title}"</span>.
+                <AlertDialogTitle className="text-xl md:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight leading-none text-center md:text-left">Delete Blog Post?</AlertDialogTitle>
+                <AlertDialogDescription className="text-neutral-500 dark:text-neutral-400 text-sm md:text-base mt-2 font-medium text-center md:text-left">
+                  Are you sure you want to delete <span className="text-orange-500 font-bold">"{blog.title}"</span>? This action is permanent and cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+              <AlertDialogFooter className="pt-6 gap-3">
+                <AlertDialogCancel className="rounded-xl h-11 px-6 text-sm md:text-base font-bold bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 border-none text-neutral-900 dark:text-white">Cancel</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={() => {
                     deleteBlog(blog.id, {
                       onSuccess: () => {
-                        toast({ title: "Deleted", description: "Blog post has been removed." });
+                        toast({ title: "Deleted", description: "The blog post has been removed successfully." });
                       }
                     });
                   }}
-                  className="bg-destructive hover:bg-destructive/90 text-white rounded-xl shadow-lg shadow-destructive/20"
+                  className="bg-red-500 hover:bg-red-600 text-white rounded-xl h-11 px-6 text-sm md:text-base font-bold shadow-lg shadow-red-500/20 border-none"
                 >
-                  Delete
+                  Confirm Delete
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

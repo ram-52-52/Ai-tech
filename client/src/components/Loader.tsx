@@ -29,7 +29,7 @@ export function Loader({ className }: { className?: string }) {
         />
       </div>
       <motion.p 
-        className="text-sm font-medium text-muted-foreground tracking-widest uppercase"
+        className="text-xs font-bold text-muted-foreground tracking-wide font-semibold"
         animate={{ opacity: [0.4, 1, 0.4] }}
         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
       >

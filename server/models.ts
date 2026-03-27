@@ -140,3 +140,22 @@ LogSchema.pre("save", async function(this: any) {
 });
 
 export const LogModel = mongoose.model("Log", LogSchema);
+// Plan Schema
+const PlanSchema = new Schema({
+  id: { type: Number, unique: true },
+  name: { type: String, required: true, unique: true },
+  priceMonthly: { type: Number, required: true },
+  priceYearly: { type: Number, required: true },
+  blogLimit: { type: Number, required: true },
+  features: { type: [String], default: [] },
+  isMostPopular: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+
+PlanSchema.pre("save", async function(this: any) {
+  if (this.isNew && !this.id) {
+    this.id = await getNextSequenceValue("planId");
+  }
+});
+
+export const PlanModel = mongoose.model("Plan", PlanSchema);

@@ -13,16 +13,19 @@ import cron from "node-cron";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { UserModel } from "./models";
+import mongoose from "mongoose";
+import { sendContactNotification } from "./services/email";
 
 // Default client ID — used as fallback when no clientId is supplied in a request
 const PRIMARY_CLIENT_ID = "6acbc0de-d5b7-46cc-bf32-a1dc0b3faf59";
 
-export function requireAuth(req: any, res: any, next: any) {
+export function checkSessionAuth(req: any, res: any, next: any) {
   if (!req.session?.userId) {
     return res.status(401).json({ message: "Unauthorized: Please log in." });
   }
   next();
 }
+
 
 async function logPlatformAction(userId: number | undefined, username: string | undefined, action: string, details?: string) {
   try {
@@ -37,17 +40,17 @@ async function logPlatformAction(userId: number | undefined, username: string | 
   }
 }
 
-export async function requireSuperAdmin(req: any, res: any, next: any) {
+export async function checkSuperAdmin(req: any, res: any, next: any) {
   if (!req.session?.userId) {
-    console.log("[Auth] requireSuperAdmin: No userId in session");
+    console.log("[Auth] checkSuperAdmin: No userId in session");
     return res.status(401).json({ message: "Unauthorized" });
   }
   const user = await storage.getUserById(Number(req.session.userId));
   if (!user || user.role !== 'superadmin') {
-    console.log(`[Auth] requireSuperAdmin: User ${user?.username} is not superadmin (Role: ${user?.role})`);
+    console.log(`[Auth] checkSuperAdmin: User ${user?.username} is not superadmin (Role: ${user?.role})`);
     return res.status(403).json({ message: "Forbidden: Super Admin access required." });
   }
-  console.log(`[Auth] requireSuperAdmin: Success for ${user.username}`);
+  console.log(`[Auth] checkSuperAdmin: Success for ${user.username}`);
   next();
 }
 
@@ -55,8 +58,58 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // --- Initialize Storage Data ---
+  await storage.seedPlans();
 
   // --- Auth Routes ---
+  app.post("/api/admin/restore-db", async (_req, res) => {
+    try {
+      const accounts = [
+        { username: "aitech", plan: "Pro", clientId: "aitech-client-id" },
+        { username: "ashwin", plan: "Growth", clientId: "ashwin-client-id" }
+      ];
+
+      for (const acc of accounts) {
+        let user = await storage.getUserByUsername(acc.username);
+        if (!user) {
+          const hashedPassword = await bcrypt.hash("user123", 10);
+          user = await storage.createUser({
+            username: acc.username,
+            password: hashedPassword,
+            clientId: acc.clientId,
+            role: "user",
+            plan: acc.plan
+          } as any);
+        }
+
+        const blogs = await storage.getBlogs(acc.clientId);
+        if (blogs.length === 0) {
+          await storage.createBlog({
+            title: `AI Trends 2026 for ${acc.username}`,
+            content: "Deep learning and neural networks are evolving faster than ever.",
+            topic: "AI Technology",
+            slug: `ai-trends-${acc.username}-${Date.now()}`,
+            clientId: acc.clientId,
+            isPublished: true,
+            publishedAt: new Date()
+          });
+          await storage.createBlog({
+            title: `Future of SaaS for ${acc.username}`,
+            content: "Multi-tenant isolation and edge computing are redefining software.",
+            topic: "SaaS Development",
+            slug: `saas-future-${acc.username}-${Date.now()}`,
+            clientId: acc.clientId,
+            isPublished: true,
+            publishedAt: new Date()
+          });
+        }
+      }
+      res.json({ message: "Restoration successful" });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.get("/api/me", async (req: any, res) => {
     if (!req.session?.userId) {
       return res.status(401).json({ message: "Not logged in" });
@@ -124,12 +177,12 @@ export async function registerRoutes(
   });
 
   // --- Super Admin Routes ---
-  app.get("/api/admin/users", requireSuperAdmin, async (_req, res) => {
+  app.get("/api/admin/users", checkSuperAdmin, async (_req, res) => {
     const users = await storage.getUsers();
     res.json(users);
   });
 
-  app.get("/api/admin/global-stats", requireSuperAdmin, async (_req, res) => {
+  app.get("/api/admin/global-stats", checkSuperAdmin, async (_req, res) => {
     try {
       const stats = await storage.getGlobalStats();
       res.json(stats);
@@ -138,24 +191,66 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/admin/platform-events", requireSuperAdmin, async (req: any, res) => {
+  app.get("/api/admin/platform-events", checkSuperAdmin, async (req: any, res) => {
     try {
-      const { page, limit, userId } = req.query;
-      console.log(`[API] Fetching logs: page=${page}, limit=${limit}, userId=${userId}`);
+      const { page, limit, userId, search } = req.query;
+      console.log(`[API] Fetching logs: page=${page}, limit=${limit}, userId=${userId}, search=${search}`);
       const result = await storage.getLogs({
         page: page ? Number(page) : 1,
         limit: limit ? Number(limit) : 20,
-        userId: userId ? Number(userId) : undefined
+        userId: userId && userId !== "all" ? Number(userId) : undefined,
+        search: search ? String(search) : undefined
       });
       console.log(`[API] Returning ${result.logs.length} logs (Total: ${result.total})`);
       res.json(result);
     } catch (err: any) {
-      console.error("[API Error] /api/admin/logs:", err);
+      console.error("[API Error] /api/admin/platform-events:", err);
       res.status(500).json({ message: err.message });
     }
   });
 
-  app.post("/api/admin/users", requireSuperAdmin, async (req, res) => {
+  app.get("/api/plans", async (_req, res) => {
+    try {
+      const plans = await storage.getPlans();
+      res.json(plans);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/plans", checkSuperAdmin, async (_req, res) => {
+    try {
+      const plans = await storage.getPlans();
+      res.json(plans);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/admin/plans/:name", checkSuperAdmin, async (req, res) => {
+    try {
+      const { name } = req.params;
+      const updated = await storage.updatePlan(name, req.body);
+      await logPlatformAction(Number(req.session.userId), 'Super Admin', "Plan Updated", `Updated plan: ${name}`);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/plans", checkSuperAdmin, async (req, res) => {
+    try {
+      const { PlanModel } = await import("./models");
+      const plan = new PlanModel(req.body);
+      await plan.save();
+      await logPlatformAction(Number(req.session.userId), 'Super Admin', "Plan Created", `Created new plan: ${req.body.name}`);
+      res.status(201).json(plan.toObject());
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/users", checkSuperAdmin, async (req, res) => {
     try {
       const { username, password, plan } = req.body;
       if (!username) return res.status(400).json({ message: "Username is required" });
@@ -187,7 +282,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/admin/users/:id/send-credentials", requireSuperAdmin, async (req: any, res) => {
+  app.post("/api/admin/users/:id/send-credentials", checkSuperAdmin, async (req: any, res) => {
     try {
       const { alternateEmail } = req.body;
       const user = await storage.getUserById(Number(req.params.id));
@@ -223,7 +318,7 @@ export async function registerRoutes(
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username);
   }
 
-  app.post("/api/admin/impersonate/:id", requireSuperAdmin, async (req: any, res) => {
+  app.post("/api/admin/impersonate/:id", checkSuperAdmin, async (req: any, res) => {
     try {
       const user = await storage.getUserById(Number(req.params.id));
       if (!user) return res.status(404).json({ message: "User not found" });
@@ -334,7 +429,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.blogs.list.path, requireAuth, async (req: any, res) => {
+  app.get(api.blogs.list.path, checkSessionAuth, async (req: any, res) => {
     try {
       const user = await storage.getUserById(Number(req.session.userId));
       const isSuperAdmin = user?.role === 'superadmin';
@@ -360,25 +455,31 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.blogs.get.path, requireAuth, async (req: any, res) => {
+  app.get(api.blogs.get.path, checkSessionAuth, async (req: any, res) => {
     const clientId = req.session.clientId;
+    const user = await storage.getUserById(Number(req.session.userId));
+    const isSuperAdmin = user?.role === 'superadmin';
     const blog = await storage.getBlog(Number(req.params.id));
-    if (!blog || blog.clientId !== clientId) {
-      return res.status(404).json({ message: "Blog not found" });
+    
+    if (!blog || (!isSuperAdmin && blog.clientId !== clientId)) {
+      return res.status(404).json({ message: "Blog not found or unauthorized" });
     }
     res.json(blog);
   });
 
-  app.get(api.blogs.getBySlug.path, requireAuth, async (req: any, res) => {
+  app.get(api.blogs.getBySlug.path, checkSessionAuth, async (req: any, res) => {
     const clientId = req.session.clientId;
+    const user = await storage.getUserById(Number(req.session.userId));
+    const isSuperAdmin = user?.role === 'superadmin';
     const blog = await storage.getBlogBySlug(req.params.slug);
-    if (!blog || blog.clientId !== clientId) {
+    
+    if (!blog || (!isSuperAdmin && blog.clientId !== clientId)) {
       return res.status(404).json({ message: "Blog not found" });
     }
     res.json(blog);
   });
 
-  app.post(api.blogs.create.path, requireAuth, async (req: any, res) => {
+  app.post(api.blogs.create.path, checkSessionAuth, async (req: any, res) => {
     try {
       const clientId = req.session.clientId;
       if (!clientId) return res.status(401).json({ message: "No client profile" });
@@ -403,10 +504,19 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.blogs.update.path, requireAuth, async (req, res) => {
+  app.put(api.blogs.update.path, checkSessionAuth, async (req: any, res) => {
     try {
+      const user = await storage.getUserById(Number(req.session.userId));
+      const isSuperAdmin = user?.role === 'superadmin';
+      const blogId = Number(req.params.id);
+
+      const existingBlog = await storage.getBlog(blogId);
+      if (!existingBlog || (!isSuperAdmin && existingBlog.clientId !== req.session.clientId)) {
+        return res.status(403).json({ message: "Unauthorized to edit this blog" });
+      }
+
       const input = api.blogs.update.input.parse(req.body);
-      const blog = await storage.updateBlog(Number(req.params.id), input);
+      const blog = await storage.updateBlog(blogId, input);
       res.json(blog);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -416,13 +526,15 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.blogs.delete.path, requireAuth, async (req, res) => {
+  app.delete(api.blogs.delete.path, checkSessionAuth, async (req: any, res) => {
+    const user = await storage.getUserById(Number(req.session.userId));
+    const isSuperAdmin = user?.role === 'superadmin';
     const blogId = Number(req.params.id);
 
     // 1. Fetch the blog record BEFORE deleting it, so we have image URLs
     const blog = await storage.getBlog(blogId);
-    if (!blog) {
-      return res.status(404).json({ message: "Blog not found" });
+    if (!blog || (!isSuperAdmin && blog.clientId !== req.session.clientId)) {
+      return res.status(404).json({ message: "Blog not found or unauthorized" });
     }
 
     // 2. Attempt to delete any locally-stored image files (orphan cleanup)
@@ -452,7 +564,7 @@ export async function registerRoutes(
 
   // --- AI Generation Route ---
 
-  app.post(api.blogs.generate.path, requireAuth, async (req: any, res) => {
+  app.post(api.blogs.generate.path, checkSessionAuth, async (req: any, res) => {
     try {
       let topic = req.body.topic;
       const clientId = req.session.clientId;
@@ -474,14 +586,9 @@ export async function registerRoutes(
       const user = await storage.getUserById(req.session.userId);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      const limits: Record<string, number> = {
-        'Free Trial': 2,
-        'Starter': 3,
-        'Growth': 10,
-        'Pro': 30
-      };
+      const currentPlan = await storage.getPlanByName(user.plan);
+      const userLimit = currentPlan ? currentPlan.blogLimit : 2;
 
-      const userLimit = limits[user.plan] || 2;
       if (user.blogsGeneratedThisMonth >= userLimit) {
         return res.status(403).json({ 
           message: `Plan limit reached (${userLimit} blogs/month). Please contact the administrator to upgrade your plan.` 
@@ -506,7 +613,31 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/blogs/:id/regenerate-full", requireAuth, async (req, res) => {
+  // Public Contact API
+  app.post("/api/contact", async (req, res) => {
+    const { name, email, message } = req.body;
+    if (!name || !email || !message) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    try {
+      await sendContactNotification(name, email, message);
+      
+      // Log as system activity
+      await storage.createLog({
+        action: "CONTACT_INQUIRY",
+        details: `New inquiry from ${name} (${email})`,
+        clientId: "SYSTEM"
+      });
+
+      res.json({ message: "Inquiry sent successfully" });
+    } catch (error: any) {
+      console.error("Contact API error:", error);
+      res.status(500).json({ message: "Failed to send inquiry" });
+    }
+  });
+
+  app.post("/api/blogs/:id/regenerate-full", checkSessionAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const { title: bodyTitle } = req.body;
@@ -546,7 +677,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/blogs/:id/regenerate-image", requireAuth, async (req, res) => {
+  app.post("/api/blogs/:id/regenerate-image", checkSessionAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const { title: bodyTitle } = req.body;
@@ -669,20 +800,21 @@ export async function registerRoutes(
 
   // --- External Sites Routes ---
 
-  app.get(api.externalSites.list.path, requireAuth, async (req: any, res) => {
+  app.get(api.externalSites.list.path, checkSessionAuth, async (req: any, res) => {
     const clientId = req.session?.clientId;
     if (!clientId) return res.status(401).json({ message: "No client profile" });
     const sites = await storage.getExternalSites(clientId);
     res.json(sites);
   });
 
-  app.post(api.externalSites.create.path, requireAuth, async (req: any, res) => {
+  app.post(api.externalSites.create.path, checkSessionAuth, async (req: any, res) => {
     try {
       const clientId = req.session?.clientId;
       if (!clientId) return res.status(401).json({ message: "No client profile" });
       
       const input = api.externalSites.create.input.parse({ ...req.body, clientId });
       const site = await storage.createExternalSite(input);
+      
       res.status(201).json(site);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -692,7 +824,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.externalSites.update.path, requireAuth, async (req: any, res) => {
+  app.put(api.externalSites.update.path, checkSessionAuth, async (req: any, res) => {
     try {
       const clientId = req.session.clientId;
       const site = await storage.getExternalSite(Number(req.params.id));
@@ -711,7 +843,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.externalSites.delete.path, requireAuth, async (req: any, res) => {
+  app.delete(api.externalSites.delete.path, checkSessionAuth, async (req: any, res) => {
     const clientId = req.session.clientId;
     const site = await storage.getExternalSite(Number(req.params.id));
     if (!site || site.clientId !== clientId) {
@@ -888,14 +1020,14 @@ export async function registerRoutes(
 
   // --- Scheduled Posts Routes ---
 
-  app.get(api.scheduledPosts.list.path, requireAuth, async (req: any, res) => {
+  app.get(api.scheduledPosts.list.path, checkSessionAuth, async (req: any, res) => {
     const clientId = req.session?.clientId;
     if (!clientId) return res.status(401).json({ message: "No client profile" });
     const posts = await storage.getScheduledPosts(clientId);
     res.json(posts);
   });
 
-  app.post(api.scheduledPosts.create.path, requireAuth, async (req: any, res) => {
+  app.post(api.scheduledPosts.create.path, checkSessionAuth, async (req: any, res) => {
     try {
       const clientId = req.session?.clientId;
       if (!clientId) return res.status(401).json({ message: "No client profile" });
@@ -916,7 +1048,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.scheduledPosts.delete.path, requireAuth, async (req: any, res) => {
+  app.delete(api.scheduledPosts.delete.path, checkSessionAuth, async (req: any, res) => {
     const clientId = req.session.clientId;
     const post = await storage.getScheduledPost(Number(req.params.id));
     if (!post || post.clientId !== clientId) {
@@ -926,7 +1058,7 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
-  app.get("/api/blogs/preview/:id", requireAuth, async (req: any, res) => {
+  app.get("/api/blogs/preview/:id", checkSessionAuth, async (req: any, res) => {
     const clientId = req.session.clientId;
     const blog = await storage.getBlog(Number(req.params.id));
     if (!blog || blog.clientId !== clientId) {

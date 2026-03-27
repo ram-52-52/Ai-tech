@@ -74,17 +74,20 @@ export default function Dashboard() {
       variants={containerVariants}
       initial="hidden"
       animate="show"
+      className="font-plus-jakarta"
     >
       <SEO 
         title="Dashboard" 
-        description="View your AI-Tech SaaS overview, track trends, and manage your latest blogs." 
+        description="View your AI Core overview, track trends, and manage your latest blogs." 
       />
       <motion.header variants={itemVariants} className="mb-10 pt-4 md:pt-0">
-        <div className="w-full md:w-auto">
-          <h1 className="text-2xl md:text-5xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 tracking-tight pb-2">
-            Dashboard
+        <div className="w-full">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight text-neutral-900 dark:text-white leading-none">
+            Dashboard <span className="text-orange-500">Overview</span>
           </h1>
-          <p className="text-muted-foreground mt-2 text-sm md:text-lg font-medium">Welcome back! Here's what's happening with your content.</p>
+          <p className="text-neutral-500 dark:text-neutral-400 mt-3 text-sm md:text-base font-medium tracking-tight">
+            Manage your content generation and monitor platform activity
+          </p>
         </div>
       </motion.header>
 
@@ -94,43 +97,45 @@ export default function Dashboard() {
         isSuperAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3"
       )}>
         <StatCard 
-          title={isSuperAdmin ? "Total Platform Blogs" : "Total Blogs"} 
+          title={isSuperAdmin ? "Total Platform Blogs" : "My Total Blogs"} 
           value={isSuperAdmin ? (globalStats?.totalBlogs || 0) : allBlogs.length} 
-          icon={<FileText className="w-5 h-5 text-primary" />}
+          icon={<FileText className="w-6 h-6" />}
           trend={isSuperAdmin ? undefined : "+12%"}
           trendUp={isSuperAdmin ? undefined : true}
         />
         <StatCard 
-          title="Published" 
+          title="Published Multi-Platform" 
           value={isSuperAdmin ? (globalStats?.totalPublished || 0) : publishedCount} 
-          icon={<CheckCircle2 className="w-5 h-5 text-primary" />}
+          icon={<CheckCircle2 className="w-6 h-6" />}
         />
         <StatCard 
-          title="Drafts" 
+          title="Drafts In Progress" 
           value={isSuperAdmin ? (globalStats?.totalDrafts || 0) : draftCount} 
-          icon={<RefreshCw className="w-5 h-5 text-primary" />}
+          icon={<RefreshCw className="w-6 h-6" />}
         />
         {isSuperAdmin && (
           <StatCard 
-            title="Total Clients" 
+            title="Registered Accounts" 
             value={globalStats?.totalUsers || 0} 
-            icon={<UserPlus className="w-5 h-5 text-primary" />}
+            icon={<UserPlus className="w-6 h-6" />}
           />
         )}
       </motion.div>
 
-      <motion.div variants={containerVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
+      <motion.div variants={containerVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-12">
         {/* Recent Blogs Section */}
         <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-display font-bold text-foreground">Recent Posts</h2>
-            <Link href="/blogs" className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors">View All &rarr;</Link>
+          <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-4">
+            <h2 className="text-xl md:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">Recent <span className="text-orange-500">Blogs</span></h2>
+            <Link href="/blogs" className="text-xs md:text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors flex items-center gap-2">
+              View all posts <TrendingUp className="w-3 h-3" />
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <AnimatePresence>
+            <AnimatePresence mode="popLayout">
               {recentBlogs.length > 0 ? (
-                recentBlogs.map((blog, idx) => (
+                recentBlogs.map((blog) => (
                   <motion.div
                     key={blog.id}
                     variants={itemVariants}
@@ -143,9 +148,9 @@ export default function Dashboard() {
                 <div className="col-span-1 sm:col-span-2">
                   <EmptyState 
                     icon={FileText}
-                    title="No blogs created yet"
-                    description="Get started by generating your first piece of AI content. It's fast, professional, and SEO-optimized."
-                    actionText="Create Your First Blog"
+                    title="No Blogs Found"
+                    description="You haven't generated any blogs yet. Start creating high-quality content today."
+                    actionText="Generate Now"
                     onAction={() => window.location.href = '/generate'}
                   />
                 </div>
@@ -156,25 +161,24 @@ export default function Dashboard() {
 
         {/* Trends Section */}
         <motion.div variants={itemVariants} className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-display font-bold text-foreground">Trending Topics</h2>
-            <Link href="/trends" className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors">See All &rarr;</Link>
+          <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-4">
+            <h2 className="text-xl md:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">Popular <span className="text-orange-500">Topics</span></h2>
           </div>
 
-          <div className="glass-panel rounded-2xl p-0 overflow-hidden relative group">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-            
+          <div className="premium-card p-0 overflow-hidden relative border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 rounded-3xl">
             {topTrends.length > 0 ? (
-              <div className="divide-y divide-border/50 relative">
+              <div className="divide-y divide-neutral-100 dark:divide-white/5">
                 {topTrends.map((trend, i) => (
-                  <div key={trend.id} className="p-5 hover:bg-white/40 dark:hover:bg-slate-800/40 transition-colors flex items-center justify-between group/item cursor-pointer">
+                  <div key={trend.id} className="p-5 hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors flex items-center justify-between group/item cursor-pointer">
                     <div className="flex items-center gap-4">
-                      <span className="w-8 h-8 rounded-xl bg-primary/10 text-primary text-sm font-bold flex items-center justify-center shadow-sm">
-                        {i + 1}
+                      <span className="text-xs md:text-sm font-semibold text-orange-500/40 group-hover:text-orange-500 transition-colors">
+                        0{i + 1}
                       </span>
-                      <span className="font-semibold text-foreground/90">{trend.topic}</span>
+                      <span className="font-semibold text-sm md:text-base text-neutral-700 dark:text-neutral-300 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">
+                        {trend.topic}
+                      </span>
                     </div>
-                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover/item:opacity-100 transition-opacity bg-primary/10 text-primary hover:bg-primary/20" asChild>
+                    <Button variant="ghost" size="icon" className="w-9 h-9 rounded-xl opacity-0 group-hover/item:opacity-100 transition-all scale-90 group-hover/item:scale-100 bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white" asChild>
                       <Link href={`/generate?topic=${encodeURIComponent(trend.topic)}`}>
                         <Sparkles className="w-4 h-4" />
                       </Link>
@@ -183,14 +187,14 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-muted-foreground text-sm relative">
-                <TrendingUp className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
-                No trends available.
+              <div className="p-10 text-center text-neutral-400 dark:text-neutral-600 font-medium tracking-tight text-xs">
+                <TrendingUp className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                Updating trends...
               </div>
             )}
-            <div className="p-4 bg-background/50 border-t border-border/50 relative backdrop-blur-md">
-              <Button className="w-full rounded-xl" variant="outline" asChild>
-                <Link href="/generate">Generate from Trends</Link>
+            <div className="p-5 bg-neutral-50 dark:bg-neutral-900/50 border-t border-neutral-100 dark:border-neutral-800">
+              <Button className="w-full h-12 rounded-xl text-sm md:text-base font-bold tracking-tight" variant="outline" asChild>
+                <Link href="/generate">Create New Post</Link>
               </Button>
             </div>
           </div>

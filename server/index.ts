@@ -146,6 +146,13 @@ app.use((req, res, next) => {
       console.error(`[Startup] Failed to perform SaaS cleanup/setup:`, err);
     }
 
+    // Seed default subscription plans
+    try {
+      await storage.seedPlans();
+    } catch (err) {
+      console.error(`[Startup] Failed to seed plans:`, err);
+    }
+
   // Drop legacy unique index on clientId in externalsites collection
   // (clientId is now a non-unique tenant key, not a unique widget identifier)
   try {

@@ -17,16 +17,29 @@ import {
   Image as ImageIcon, Hash, Tags
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function EditBlog() {
   const [match, params] = useRoute("/blogs/:id");
   const id = parseInt(params?.id || "0");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'superadmin';
   const { data: blog, isLoading } = useBlog(id);
   const { mutate: update, isPending: isSaving } = useUpdateBlog();
   const { mutate: remove, isPending: isDeleting } = useDeleteBlog();
@@ -101,12 +114,15 @@ export default function EditBlog() {
     });
   };
 
+  const backPath = isSuperAdmin ? "/superadmin/blogs" : "/blogs";
+
   const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this blog?")) {
-      remove(id, {
-        onSuccess: () => setLocation("/blogs"),
-      });
-    }
+    remove(id, {
+      onSuccess: () => {
+        toast({ title: "Deleted", description: "Blog post has been removed." });
+        setLocation(backPath);
+      },
+    });
   };
 
   const handleSchedule = () => {
@@ -183,95 +199,118 @@ export default function EditBlog() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20">
+    <div className="max-w-7xl mx-auto space-y-10 pb-32 animate-in fade-in duration-700 font-plus-jakarta">
       {/* Header Actions */}
-      <div className="flex items-center justify-between sticky top-0 z-20 bg-background/80 backdrop-blur-xl py-5 border-b border-border/50 -mx-6 px-8 transition-all">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => setLocation("/blogs")} className="h-10 w-10 hover:bg-secondary rounded-xl">
-            <ChevronLeft className="w-6 h-6" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between sticky top-0 z-30 bg-white dark:bg-neutral-950 py-4 md:py-6 border-b border-neutral-200 dark:border-neutral-800 -mx-4 px-4 md:-mx-8 md:px-12 transition-all">
+        <div className="flex items-center gap-5">
+          <Button variant="outline" size="icon" onClick={() => setLocation(backPath)} className="h-12 w-12 hover:bg-neutral-100 dark:hover:bg-neutral-800 border-neutral-200 dark:border-neutral-800 rounded-xl group transition-all shadow-sm">
+            <ChevronLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
           </Button>
           <div className="flex flex-col">
-            <h1 className="text-2xl font-display font-extrabold text-foreground tracking-tight">Edit Blog</h1>
-            <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground/60 flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Real-time synchronization active
-            </span>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-neutral-900 dark:text-white tracking-tight leading-none">
+              Edit <span className="text-orange-500">Blog Post</span>
+            </h1>
+            <div className="flex items-center gap-3 mt-2">
+              <span className="text-xs md:text-sm font-semibold text-neutral-500 dark:text-neutral-400 flex items-center gap-2 tracking-tight">
+                <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                Live saving active
+              </span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => setLocation(`/blogs/${id}/view`)} className="rounded-xl bg-background shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 mt-6 md:mt-0">
+          <Button variant="ghost" onClick={() => setLocation(`/blogs/${id}/view`)} className="h-11 px-5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-sm md:text-base font-bold tracking-tight hover:bg-neutral-200 dark:hover:bg-neutral-700 shadow-sm text-neutral-900 dark:text-white">
             <Eye className="w-4 h-4 mr-2" />
-            View
+            Preview
           </Button>
-          <Button variant="destructive" onClick={handleDelete} disabled={isDeleting} className="rounded-xl opacity-80 hover:opacity-100">
-            <Trash2 className="w-4 h-4 mr-2" />
-            Delete
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" disabled={isDeleting} className="h-11 px-5 rounded-xl text-sm md:text-base font-bold tracking-tight text-red-500 hover:bg-red-500/10 transition-colors">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="w-[95vw] max-w-md md:max-w-lg lg:max-w-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[2rem] p-4 md:p-8 shadow-2xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-xl md:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">Delete Post?</AlertDialogTitle>
+                <AlertDialogDescription className="text-sm md:text-base text-neutral-500 dark:text-neutral-400 mt-2 font-medium tracking-tight">
+                  Are you sure you want to delete <span className="text-orange-500 font-bold">"{blog.title}"</span>? This action is permanent and all associated content will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="pt-6 gap-3">
+                <AlertDialogCancel className="rounded-xl h-11 px-6 text-sm md:text-base font-bold tracking-tight bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 border-none text-neutral-900 dark:text-white">Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleDelete}
+                  className="bg-red-500 hover:bg-red-600 text-white rounded-xl h-11 px-6 text-sm md:text-base font-bold tracking-tight shadow-lg shadow-red-500/20"
+                >
+                  Delete Permanently
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button 
             onClick={handleSubmit(onSubmit)} 
             disabled={isSaving} 
-            className={`rounded-xl px-8 font-bold shadow-xl transition-all ${isDirty ? 'shadow-primary/25 opacity-100' : 'opacity-100 grayscale-0'}`}
+            className="flex-1 sm:flex-none h-11 px-8 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm md:text-base font-bold tracking-tight shadow-lg shadow-orange-500/20 transition-all border-none"
           >
             {isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2" /> Save Changes</>}
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 px-0 sm:px-4">
         {/* Main Content Editor */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-card rounded-2xl border border-border/50 p-6 shadow-sm space-y-6">
-            <div className="space-y-3">
-              <div className="flex items-end gap-3">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="title" className="text-base text-muted-foreground/80 font-semibold px-1">Blog Title</Label>
-                  <Input 
-                    id="title"
-                    {...register("title")}
-                    className="text-lg font-display font-bold py-7 bg-background/50 border-border/50 focus:ring-primary/20 transition-all rounded-xl shadow-inner-sm"
-                    placeholder="Enter a compelling title..."
-                  />
-                </div>
+        <div className="lg:col-span-2 space-y-8">
+          <div className="premium-card p-5 md:p-8 space-y-6 md:space-y-8 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[2rem] shadow-xl">
+            <div className="space-y-3 focus-within:translate-x-1 transition-transform px-1 md:px-0">
+              <Label htmlFor="title" className="text-xs md:text-sm font-semibold text-neutral-900 dark:text-white px-1 tracking-tight">Post Title</Label>
+              <div className="flex flex-col md:flex-row items-stretch gap-3">
+                <Input 
+                  id="title"
+                  {...register("title")}
+                  className="h-14 text-lg font-bold bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-800 focus-visible:ring-orange-500/20 transition-all rounded-xl px-5"
+                  placeholder="Enter a compelling title..."
+                />
                 <Button 
                   onClick={handleRegenerateFullClick}
                   disabled={isRegeneratingFull || !currentTitle}
-                  className="h-14 px-6 rounded-xl bg-gradient-to-r from-primary to-violet-600 hover:shadow-lg hover:shadow-primary/20 transition-all group shrink-0"
+                  className="h-14 px-6 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-all shrink-0"
                 >
                   {isRegeneratingFull ? (
                     <RefreshCw className="w-5 h-5 animate-spin" />
                   ) : (
-                    <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
+                    <Sparkles className="w-5 h-5 mr-2" />
                   )}
-                  <span className="ml-2 hidden sm:inline">Update All from Title</span>
+                  <span className="font-bold text-xs md:text-sm tracking-tight">Full Regenerate</span>
                 </Button>
               </div>
             </div>
 
-            <div className="space-y-2 relative">
+            <div className="space-y-3 relative">
               <div className="flex items-center justify-between px-1">
-                <Label htmlFor="content" className="text-base text-muted-foreground/80 font-semibold">Content</Label>
+                <Label htmlFor="content" className="text-xs md:text-sm font-semibold text-neutral-900 dark:text-white tracking-tight">Blog Content</Label>
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   onClick={() => setShowPreview(!showPreview)}
-                  className={`text-[10px] uppercase tracking-widest font-bold h-7 rounded-lg gap-2 ${showPreview ? "text-primary bg-primary/10" : "text-muted-foreground"}`}
+                  className={`text-xs md:text-sm tracking-tight font-bold h-8 px-4 rounded-lg gap-2 transition-all ${showPreview ? "bg-orange-500 text-white" : "text-neutral-500 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200"}`}
                 >
-                  {showPreview ? <><Type className="w-3.5 h-3.5" /> Source Code</> : <><Eye className="w-3.5 h-3.5" /> Live Preview</>}
+                  {showPreview ? <><Type className="w-3.5 h-3.5" /> Editor</> : <><Eye className="w-3.5 h-3.5" /> Preview</>}
                 </Button>
               </div>
               
-              <div className="relative group/editor">
+              <div className="relative group px-1 md:px-0">
                 {!showPreview ? (
                   <Textarea 
                     id="content"
                     {...register("content")}
-                    className="min-h-[600px] font-mono text-sm leading-relaxed p-6 bg-background/50 border-border/50 focus:ring-primary/20 transition-all rounded-xl resize-none"
-                    placeholder="Write your blog content here..."
+                    className="min-h-[400px] md:min-h-[600px] text-sm md:text-base leading-relaxed p-5 md:p-6 bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-800 focus-visible:ring-orange-500/20 transition-all rounded-2xl resize-none shadow-inner"
+                    placeholder="Start writing your amazing content here..."
                   />
                 ) : (
-                  <div className="min-h-[600px] p-8 bg-white/80 rounded-xl border border-border/50 overflow-auto prose prose-slate max-w-none shadow-inner-sm">
+                  <div className="min-h-[400px] md:min-h-[600px] p-5 md:p-8 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-auto prose prose-neutral dark:prose-invert prose-orange max-w-none shadow-sm">
                     <div 
-                      className="blog-preview-content"
+                      className="blog-preview-content text-sm md:text-base"
                       dangerouslySetInnerHTML={{ 
                         __html: (watch("content") || "")
                       }} 
@@ -280,56 +319,49 @@ export default function EditBlog() {
                 )}
                 
                 {isRegeneratingFull && (
-                  <div className="absolute inset-0 bg-background/60 backdrop-blur-[4px] rounded-xl flex items-center justify-center z-10 transition-all duration-300">
-                    <div className="bg-background/95 border border-border/50 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-6 animate-in zoom-in-95 duration-200">
-                      <div className="relative">
-                        <Wand2 className="w-12 h-12 text-primary animate-pulse" />
-                        <div className="absolute -inset-2 bg-primary/30 blur-xl rounded-full animate-pulse" />
+                  <div className="absolute inset-0 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-40 transition-all duration-300">
+                    <div className="flex flex-col items-center gap-6 text-center max-w-sm px-6">
+                      <Wand2 className="w-16 h-16 text-orange-500 animate-bounce" />
+                      <div className="space-y-2">
+                        <span className="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">Writing Excellence</span>
+                        <p className="text-sm text-neutral-500 font-semiboldium tracking-tight">AI is currently refining your content and assets. This may take a moment.</p>
                       </div>
-                      <div className="flex flex-col items-center text-center">
-                        <span className="text-lg font-bold tracking-tight text-foreground">Synchronizing Rich Content</span>
-                        <span className="text-xs text-muted-foreground font-mono mt-1 italic max-w-[200px]">Optimizing structure and imagery...</span>
+                      <div className="h-1.5 w-48 bg-neutral-100 dark:bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-orange-500 animate-shimmer" style={{ width: '100%', backgroundSize: '200% 100%' }} />
                       </div>
                     </div>
                   </div>
                 )}
               </div>
-              <p className="text-[10px] tracking-wider uppercase font-bold text-muted-foreground/40 text-right px-2 italic">Markdown & HTML Supported</p>
             </div>
           </div>
         </div>
 
         {/* Sidebar Settings */}
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Featured Image */}
-          <div className="bg-card rounded-2xl border border-border/50 p-6 shadow-sm space-y-4">
-            <h3 className="font-display font-semibold text-lg border-b border-border/50 pb-4 flex items-center gap-2">
-              <ImageIcon className="w-5 h-5 text-primary" />
+          <div className="premium-card p-6 space-y-5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[2rem] shadow-xl">
+            <h3 className="font-bold text-xs md:text-sm tracking-wide text-neutral-900 dark:text-white flex items-center gap-2 border-b border-neutral-100 dark:border-neutral-800 pb-4">
+              <ImageIcon className="w-4 h-4 text-orange-500" />
               Featured Image
             </h3>
             
-            <div className="aspect-video rounded-xl bg-secondary/30 overflow-hidden border border-border/50 relative group">
+            <div className="aspect-video rounded-2xl bg-neutral-100 dark:bg-neutral-950 overflow-hidden border border-neutral-200 dark:border-white/10 relative group">
               {currentImageUrl ? (
                 <img 
-                  src={currentImageUrl || "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?q=80&w=1200"}
+                  src={currentImageUrl}
                   alt={currentTitle} 
-                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
-                  <ImageIcon className="w-10 h-10" />
+                <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-700">
+                  <ImageIcon className="w-12 h-12" />
                 </div>
               )}
               
               {(isRegenerating || isRegeneratingFull) && (
-                <div className="absolute inset-0 bg-background/70 backdrop-blur-md flex items-center justify-center z-10 animate-in fade-in duration-300">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="relative">
-                      <RefreshCw className="w-10 h-10 text-primary animate-spin" />
-                      <div className="absolute -inset-2 bg-primary/20 blur-xl rounded-full animate-pulse" />
-                    </div>
-                    <span className="text-[11px] font-bold text-primary tracking-widest uppercase animate-pulse text-center px-6">Fetching Visuals...</span>
-                  </div>
+                <div className="absolute inset-0 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center z-10">
+                  <RefreshCw className="w-8 h-8 text-orange-500 animate-spin" />
                 </div>
               )}
             </div>
@@ -338,133 +370,121 @@ export default function EditBlog() {
               variant="outline" 
               onClick={handleRegenerateImageClick}
               disabled={isRegenerating || isRegeneratingFull || !currentTitle}
-              className="w-full bg-background/50 hover:bg-secondary border-dashed border-2 rounded-xl h-11 transition-all"
+              className="w-full h-11 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border-neutral-200 dark:border-neutral-800 rounded-xl text-xs md:text-sm font-bold tracking-tight transition-colors shadow-sm text-neutral-900 dark:text-white"
             >
-              {isRegenerating ? (
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <ImageIcon className="w-4 h-4 mr-2" />
-              )}
-              Regenerate Featured Image
+              <RefreshCw className="w-3.5 h-3.5 mr-2" />
+              Regenerate Image
             </Button>
-            <p className="text-[10px] text-muted-foreground/60 text-center px-4 leading-tight italic">
-              Uses high-quality search algorithms to find the most relevant cover image.
-            </p>
           </div>
 
           {/* Publishing Settings */}
-          <div className="bg-card rounded-2xl border border-border/50 p-6 shadow-sm space-y-4">
-            <h3 className="font-display font-semibold text-lg border-b border-border/50 pb-4 flex items-center gap-2">
-              <Globe className="w-5 h-5 text-primary" />
-              Distribution
+          <div className="premium-card p-6 space-y-6 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[2rem] shadow-xl">
+            <h3 className="font-bold text-xs md:text-sm tracking-wide text-neutral-900 dark:text-white flex items-center gap-2 border-b border-neutral-100 dark:border-neutral-800 pb-4">
+              <Globe className="w-4 h-4 text-orange-500" />
+              Post Settings
             </h3>
             
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/30">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between p-4 bg-orange-500/5 dark:bg-orange-500/10 rounded-2xl border border-orange-500/10">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-bold">Public Status</Label>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Visibility Toggle</p>
+                  <Label className="text-xs md:text-sm font-semibold text-neutral-900 dark:text-white tracking-tight">Publish Visibility</Label>
+                  <p className="text-xs md:text-sm text-neutral-500 dark:text-neutral-400 font-semibold tracking-tight">Visible to your audience</p>
                 </div>
                 <Switch 
                   checked={watch("isPublished")}
                   onCheckedChange={(checked) => setValue("isPublished", checked, { shouldDirty: true })}
-                  className="data-[state=checked]:bg-emerald-500"
-                />
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
-                  <Hash className="w-3.5 h-3.5 text-primary" />
-                  Topic / Category (Card Tag)
-                </Label>
-                <Input 
-                  {...register("topic")} 
-                  placeholder="e.g. Technology, Real Estate..." 
-                  className="bg-background/50 h-9 text-sm rounded-lg"
+                  className="data-[state=checked]:bg-orange-500"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
-                  <Tags className="w-3.5 h-3.5 text-primary" />
-                  Tags (Comma separated)
+                <Label className="text-xs md:text-sm font-semibold text-neutral-500 dark:text-neutral-400 flex items-center gap-2 mb-1 tracking-tight">
+                  <Hash className="w-3.5 h-3.5 text-orange-500" />
+                  Primary Topic
                 </Label>
                 <Input 
-                  {...register("tags")} 
-                  placeholder="SEO, AI, Future..." 
-                  className="bg-background/50 h-9 text-sm rounded-lg"
+                  {...register("topic")} 
+                  placeholder="e.g. Technology" 
+                  className="bg-neutral-50 dark:bg-neutral-800 h-11 text-sm md:text-base rounded-xl border-neutral-200 dark:border-neutral-800 px-4 font-semibold text-neutral-900 dark:text-white"
                 />
               </div>
 
-              <div className="space-y-2 pt-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Schedule Queue</Label>
-                <div className="grid gap-4 bg-secondary/20 p-4 rounded-xl border border-border/30">
-                  <div className="space-y-2">
-                    <Label htmlFor="site-select">Destination Site</Label>
-                    <Select
-                      value={scheduleForm.siteId}
-                      onValueChange={(val) => setScheduleForm(prev => ({ ...prev, siteId: val }))}
-                    >
-                      <SelectTrigger id="site-select" className="bg-background/50">
-                        <SelectValue placeholder="Select site..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sites?.map((site) => (
-                          <SelectItem key={site.id} value={String(site.id)}>
-                            <span className="flex items-center gap-2">
-                              {site.siteName}
-                              <span className="text-[10px] text-muted-foreground uppercase">({site.siteType})</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              <div className="space-y-2">
+                <Label className="text-xs md:text-sm font-semibold text-neutral-500 dark:text-neutral-400 flex items-center gap-2 mb-1 tracking-tight">
+                  <Tags className="w-3.5 h-3.5 text-orange-500" />
+                  Keywords
+                </Label>
+                <Input 
+                  {...register("tags")} 
+                  placeholder="AI, Innovation, SaaS" 
+                  className="bg-neutral-50 dark:bg-neutral-800 h-11 text-sm md:text-base rounded-xl border-neutral-200 dark:border-neutral-800 px-4 font-semibold text-neutral-900 dark:text-white"
+                />
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                <div className="space-y-4">
+                  <Label className="text-xs md:text-sm font-semibold text-neutral-500 px-1 tracking-tight">Publisher Schedule</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <p className="text-xs md:text-sm font-semibold text-neutral-400 tracking-tight px-1">Destination</p>
+                      <Select
+                        value={scheduleForm.siteId}
+                        onValueChange={(val) => setScheduleForm(prev => ({ ...prev, siteId: val }))}
+                      >
+                         <SelectTrigger className="bg-neutral-50 dark:bg-neutral-800 h-11 rounded-xl border-neutral-200 dark:border-neutral-800 px-4 text-xs md:text-sm font-semibold tracking-tight">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 rounded-xl">
+                          {sites?.map((site) => (
+                            <SelectItem key={site.id} value={String(site.id)}>
+                              <span className="font-semibold text-xs md:text-sm tracking-tight">{site.siteName}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs md:text-sm font-semibold text-neutral-400 tracking-tight px-1">Post Date & Time</p>
+                      <Input
+                        type="datetime-local"
+                        value={scheduleForm.scheduledAt}
+                        onChange={(e) => setScheduleForm(prev => ({ ...prev, scheduledAt: e.target.value }))}
+                        className="bg-neutral-50 dark:bg-neutral-800 h-11 rounded-xl border-neutral-200 dark:border-neutral-800 px-4 text-sm md:text-base font-semibold text-neutral-900 dark:text-white"
+                        min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="schedule-time">Broadcast Time</Label>
-                    <Input
-                      id="schedule-time"
-                      type="datetime-local"
-                      value={scheduleForm.scheduledAt}
-                      onChange={(e) => setScheduleForm(prev => ({ ...prev, scheduledAt: e.target.value }))}
-                      className="bg-background/50"
-                      min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
-                    />
-                  </div>
-
-                  <Button
+                   <Button
                     onClick={handleSchedule}
                     disabled={isScheduling}
-                    className="w-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all rounded-xl"
+                    className="w-full h-12 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold text-sm md:text-base tracking-tight shadow-lg shadow-black/10 transition-all hover:-translate-y-0.5"
                   >
-                    <CalendarClock className="w-4 h-4 mr-2" />
-                    {isScheduling ? "Processing..." : "Schedule Post"}
+                    <CalendarClock className="w-3.5 h-3.5 mr-2" />
+                    Set Schedule
                   </Button>
                 </div>
               </div>
 
               {/* Scheduled List */}
               {scheduledForThisBlog.length > 0 && (
-                <div className="space-y-2 pt-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40 italic">Scheduled Jobs</Label>
+                <div className="space-y-3 pt-4 border-t border-neutral-100 dark:border-white/5">
+                  <Label className="text-xs md:text-sm font-bold tracking-wide text-neutral-400">Upcoming Posts</Label>
                   <div className="space-y-2">
                     {scheduledForThisBlog.map((post) => {
                       const site = sites?.find(s => s.id === post.siteId);
                       return (
-                        <div key={post.id} className="flex items-center justify-between bg-secondary/40 rounded-lg p-3 border border-border/20">
+                        <div key={post.id} className="flex items-center justify-between bg-white dark:bg-white/5 rounded-xl p-3 border border-neutral-200 dark:border-white/10 group">
                           <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                            <span className="text-sm font-bold truncate">{site?.siteName ?? "Remote Site"}</span>
-                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
-                              <Clock className="w-3 h-3" />
+                            <span className="text-xs md:text-sm font-bold text-neutral-900 dark:text-white truncate tracking-tight">{site?.siteName ?? "Remote Site"}</span>
+                            <div className="flex items-center gap-1.5 text-xs md:text-sm text-neutral-500 tracking-tight">
+                              <Clock className="w-3 h-3 text-orange-500" />
                               {format(new Date(post.scheduledAt), "MMM d, h:mm a")}
                             </div>
-                            <span className={`text-[10px] font-bold uppercase mt-1 ${post.status === "posted" ? "text-emerald-500" : post.status === "failed" ? "text-destructive" : "text-amber-500"}`}>
-                              {post.status}
-                            </span>
                           </div>
-                          <Button variant="ghost" size="icon" onClick={() => deleteScheduled(post.id)} className="h-8 w-8 text-destructive hover:bg-destructive/10">
-                            <X className="w-4 h-4" />
+                          <Button variant="ghost" size="icon" onClick={() => deleteScheduled(post.id)} className="h-8 w-8 text-red-500 hover:bg-red-500/10 rounded-lg group-hover:opacity-100 transition-opacity">
+                            <X className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       );
@@ -473,23 +493,6 @@ export default function EditBlog() {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* External Preview */}
-          <div className="bg-gradient-to-br from-indigo-500/5 to-primary/5 rounded-2xl border border-primary/10 p-6 space-y-4">
-            <h4 className="font-display font-bold text-primary flex items-center gap-2">
-              <Eye className="w-4 h-4" /> Final Audit
-            </h4>
-            <p className="text-[11px] text-muted-foreground leading-relaxed italic">
-              Review exactly how your content appears to global visitors before finalizing changes.
-            </p>
-            <Button
-              variant="outline"
-              className="w-full bg-background/50 hover:bg-background border-primary/20 text-primary rounded-xl transition-all"
-              onClick={() => window.open(API_ENDPOINTS.BLOG.PREVIEW(id), '_blank')}
-            >
-              Preview on Live Engine
-            </Button>
           </div>
         </div>
       </div>

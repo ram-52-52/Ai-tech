@@ -264,11 +264,11 @@ async function resolveContentImages(html: string, blogTopic: string): Promise<st
     
     // Final fallback — use the blog topic itself so it's never generic
     if (!keyword || keyword.length < 3) {
-      keyword = blogTopic || "innovation";
+      keyword = blogTopic || "technology";
     }
     
-    // Combine blog topic with keyword for better context
-    const contextualKeyword = blogTopic ? `${blogTopic} ${keyword}` : keyword;
+    // Combine blog topic with keyword for better context (max 3 keywords)
+    const contextualKeyword = `business,technology,${keyword.split(' ').slice(0, 2).join(',')}`;
     
     // De-duplicate tasks by target URL
     if (!tasks.find(t => t.target === src)) {
@@ -353,7 +353,12 @@ export async function generateImageForBlog(title: string, slug: string): Promise
   }
 
   const seed = Array.from(slug).reduce((acc, char) => acc + char.charCodeAt(0), 0) % 1000;
-  const fallbackUrl = `https://loremflickr.com/1200/600/${encodeURIComponent(sanitizedTitle).replace(/%20/g, ',')}?lock=${seed}`;
+  // Improved LoremFlickr: Added business,technology tags to prevent kitten fallbacks
+  const fallbackUrl = `https://loremflickr.com/1200/600/business,technology,${encodeURIComponent(sanitizedTitle).replace(/%20/g, ',')}?lock=${seed}`;
+  
+  // Hard Ultimate Fallback: Professional High-Quality Tech Image (Unsplash direct)
+  const ultimateFallback = `https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1200`;
+
 
   // 1. Unsplash Tier (High Quality)
   try {
@@ -385,13 +390,28 @@ export async function generateImageForBlog(title: string, slug: string): Promise
         }
       );
 
-      const base64Image = Buffer.from(hfResponse.data, "binary").toString("base64");
-      return { url: `data:image/png;base64,${base64Image}`, provider: 'huggingface' };
+      const base64Image = Buffer.from(hfResponse.data, "binary");
+      const fileName = `ai-img-${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
+      const dirPath = path.join(process.cwd(), "client", "public", "generated-images");
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+      const filePath = path.join(dirPath, fileName);
+      fs.writeFileSync(filePath, base64Image);
+      return { url: `/generated-images/${fileName}`, provider: 'huggingface' };
     }
   } catch (hfErr: any) {
     console.warn(`[HuggingFace] Tier Failed: ${hfErr.message}. Falling back to LoremFlickr...`);
   }
 
   // 3. LoremFlickr Tier (Relevant & Reliable)
-  return { url: fallbackUrl, provider: 'loremflickr' };
+  try {
+    const res = await axios.get(fallbackUrl, { timeout: 5000 });
+    if (res.status === 200) return { url: fallbackUrl, provider: 'loremflickr' };
+  } catch {
+    // Fail through to ultimate fallback
+  }
+
+  // 4. Hard Ultimate Fallback Tier
+  return { url: ultimateFallback, provider: 'static-professional' };
 }

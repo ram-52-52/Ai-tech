@@ -12,28 +12,30 @@ interface StatCardProps {
 
 export function StatCard({ title, value, icon, trend, trendUp, className }: StatCardProps) {
   return (
-    <div className={cn("glass-card p-6 relative group overflow-hidden border-white/20", className)}>
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      <div className="relative z-10 flex flex-col h-full">
-        <div className="flex justify-between items-start mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-blue-500/20 border border-primary/20 flex items-center justify-center text-primary shadow-[0_0_20px_rgba(99,102,241,0.2)] group-hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] transition-all duration-500 group-hover:scale-110">
+    <div className={cn("premium-card p-8 min-h-[160px] relative group overflow-hidden border border-neutral-200 dark:border-neutral-800 shadow-sm hover:shadow-xl transition-all duration-300 rounded-[2rem]", className)}>
+      <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-orange-500/10 transition-colors duration-500" />
+      <div className="relative z-10 flex flex-col h-full justify-between">
+        <div className="flex justify-between items-start">
+          <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/20 group-hover:scale-110 transition-transform duration-300">
             {icon}
           </div>
           {trend && (
             <span className={cn(
-              "text-xs font-medium px-2 py-1 rounded-full",
+              "text-xs md:text-sm font-bold px-3 py-1 rounded-full border",
               trendUp 
-                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" 
-                : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20" 
+                : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20"
             )}>
               {trend}
             </span>
           )}
         </div>
-      <div className="mt-auto relative z-10">
-        <p className="text-muted-foreground text-sm font-semibold mb-1 uppercase tracking-widest">{title}</p>
-        <h3 className="text-3xl md:text-4xl font-display font-black text-foreground group-hover:text-glow transition-all duration-300">{value}</h3>
-      </div>
+        <div className="space-y-1 mt-4">
+          <p className="text-neutral-500 dark:text-neutral-400 text-xs md:text-sm font-semibold tracking-tight">{title}</p>
+          <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-neutral-900 dark:text-white group-hover:text-orange-500 transition-colors duration-300 tracking-tight">
+            {value}
+          </h3>
+        </div>
       </div>
     </div>
   );

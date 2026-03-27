@@ -56,6 +56,13 @@ export interface IStorage {
   // Logs
   getLogs(options?: { userId?: number; page?: number; limit?: number }): Promise<{ logs: Log[]; total: number }>;
   createLog(log: InsertLog & { userId?: number; username?: string }): Promise<Log>;
+
+  // Plans
+  getPlans(): Promise<any[]>;
+  getPlanByName(name: string): Promise<any | undefined>;
+  createPlan(plan: any): Promise<any>;
+  updatePlan(name: string, updates: any): Promise<any>;
+  seedPlans(): Promise<void>;
 }
 
 export class MongoStorage implements IStorage {
@@ -334,9 +341,17 @@ export class MongoStorage implements IStorage {
     await ScheduledPostModel.deleteOne({ id });
   }
 
-  async getLogs(options: { userId?: number; page?: number; limit?: number } = {}): Promise<{ logs: Log[]; total: number }> {
-    const { userId, page = 1, limit = 20 } = options;
-    const query = userId ? { userId } : {};
+  async getLogs(options: { userId?: number; page?: number; limit?: number; search?: string } = {}): Promise<{ logs: Log[]; total: number }> {
+    const { userId, page = 1, limit = 20, search } = options;
+    const query: any = {};
+    if (userId) query.userId = userId;
+    if (search) {
+      query.$or = [
+        { action: { $regex: search, $options: 'i' } },
+        { details: { $regex: search, $options: 'i' } },
+        { username: { $regex: search, $options: 'i' } }
+      ];
+    }
     const total = await LogModel.countDocuments(query);
     const docs = await LogModel.find(query)
       .sort({ timestamp: -1 })
@@ -349,13 +364,77 @@ export class MongoStorage implements IStorage {
     };
   }
 
-  async createLog(insertLog: InsertLog & { userId?: number; username?: string }): Promise<Log> {
+  async createLog(insertLog: InsertLog & { userId?: any; username?: string; clientId?: string }): Promise<Log> {
     const log = new LogModel({
       ...insertLog,
       timestamp: new Date()
     });
     await log.save();
     return log.toObject() as Log;
+  }
+
+  // Plan Implementation
+  async getPlans(): Promise<any[]> {
+    const { PlanModel } = await import("./models");
+    return await PlanModel.find().sort({ priceMonthly: 1 });
+  }
+
+  async getPlanByName(name: string): Promise<any | undefined> {
+    const { PlanModel } = await import("./models");
+    return await PlanModel.findOne({ name });
+  }
+
+  async createPlan(plan: any): Promise<any> {
+    const { PlanModel } = await import("./models");
+    const doc = new PlanModel(plan);
+    await doc.save();
+    return doc.toObject();
+  }
+
+  async updatePlan(name: string, updates: any): Promise<any> {
+    const { PlanModel } = await import("./models");
+    const doc = await PlanModel.findOneAndUpdate({ name }, updates, { new: true, upsert: true });
+    return doc.toObject();
+  }
+
+  async seedPlans(): Promise<void> {
+    const { PlanModel } = await import("./models");
+    const starterExists = await PlanModel.findOne({ name: "Starter" });
+    if (starterExists) return;
+    
+    // Clear legacy plans if we are switching to the new 3-tier model
+    await PlanModel.deleteMany({});
+
+    const defaultPlans = [
+      { 
+        name: "Starter", 
+        priceMonthly: 499, 
+        priceYearly: 4990, // ~20% discount (10 months)
+        blogLimit: 3, 
+        features: ["3 AI Blogs / month", "Auto-Scheduling", "Multi-language support", "Community Support"],
+        isMostPopular: false
+      },
+      { 
+        name: "Growth", 
+        priceMonthly: 1499, 
+        priceYearly: 14990, 
+        blogLimit: 10, 
+        features: ["10 AI Blogs / month", "Advanced SEO formatting", "Auto AI Images", "Priority Support"],
+        isMostPopular: true
+      },
+      { 
+        name: "Pro", 
+        priceMonthly: 3999, 
+        priceYearly: 39990, 
+        blogLimit: 30, 
+        features: ["30 AI Blogs / month", "Bulk Content Generation", "Custom Workflows", "Dedicated Manager"],
+        isMostPopular: false
+      }
+    ];
+
+    // Use create instead of insertMany to ensure pre-save hooks (for numeric id) are triggered
+    await PlanModel.create(defaultPlans);
+    console.log("[Storage] Default plans seeded");
   }
 }
 
@@ -565,6 +644,12 @@ export class DatabaseStorage implements IStorage {
     const [log] = await db.insert(logs).values(insertLog).returning();
     return log;
   }
+
+  async getPlans(): Promise<any[]> { return []; }
+  async getPlanByName(_name: string): Promise<any | undefined> { return undefined; }
+  async createPlan(_plan: any): Promise<any> { return {}; }
+  async updatePlan(_name: string, _updates: any): Promise<any> { return {}; }
+  async seedPlans(): Promise<void> { }
 }
 
 export class MemStorage implements IStorage {
@@ -786,6 +871,13 @@ export class MemStorage implements IStorage {
     this.saveToDisk();
     return blog;
   }
+
+  // Admin Plan Placeholders (SQL not yet implemented)
+  async getPlans(): Promise<any[]> { return []; }
+  async getPlanByName(_name: string): Promise<any | undefined> { return undefined; }
+  async createPlan(_plan: any): Promise<any> { return {}; }
+  async updatePlan(_name: string, _updates: any): Promise<any> { return {}; }
+  async seedPlans(): Promise<void> { }
 
   async updateBlog(id: number, updates: Partial<InsertBlog>): Promise<Blog> {
     const blog = this.blogs.get(id);

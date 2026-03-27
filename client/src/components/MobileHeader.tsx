@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/co
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { NAVIGATION_ITEMS, SUPERADMIN_NAVIGATION_ITEMS } from "@/constants/navigationConstant";
 
@@ -29,10 +30,9 @@ export function MobileHeader() {
   const isSuperAdmin = user?.role === "superadmin";
   const navItems = isSuperAdmin ? SUPERADMIN_NAVIGATION_ITEMS : NAVIGATION_ITEMS;
 
-  // Auto-close menu on resize to desktop
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1024) { // lg breakpoint
+      if (window.innerWidth >= 1024) {
         setOpen(false);
       }
     };
@@ -45,13 +45,13 @@ export function MobileHeader() {
   );
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 border-b border-white/20 glass-panel flex items-center justify-between px-4 z-40 lg:hidden rounded-b-2xl">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center shadow-lg shadow-primary/20">
+    <header className="fixed top-0 left-0 right-0 h-20 border-b border-neutral-200 dark:border-white/5 flex items-center justify-between px-6 z-40 lg:hidden bg-white/80 dark:bg-neutral-950/80 backdrop-blur-3xl">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-orange-500 shadow-lg shadow-orange-500/20 flex items-center justify-center">
           <Sparkles className="text-white w-5 h-5" />
         </div>
-        <h1 className="font-display font-bold text-lg tracking-tight text-foreground">
-          SaaS<span className="text-primary">Admin</span>
+        <h1 className="font-outfit font-bold text-xl tracking-tighter text-neutral-900 dark:text-white leading-none">
+          AI<span className="text-orange-500">TECH</span>
         </h1>
       </div>
 
@@ -59,25 +59,27 @@ export function MobileHeader() {
         <ThemeToggle />
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Open menu" className="rounded-full hover:bg-white/10">
-              <Menu className="w-6 h-6" />
+            <Button variant="ghost" size="icon" className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/5 text-orange-500 hover:bg-neutral-200 dark:hover:bg-white/10">
+              <Menu className="w-5 h-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-[280px] p-0 border-r-border/50 bg-background/95 backdrop-blur-xl">
-            <SheetHeader className="p-6 border-b border-border/50 text-left">
-              <SheetTitle className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center shadow-lg shadow-primary/20">
-                  <Sparkles className="text-white w-5 h-5" />
+          <SheetContent side="left" className="w-[280px] p-0 border-r border-neutral-200 dark:border-white/10 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-3xl flex flex-col shadow-2xl">
+            <SheetHeader className="p-8 border-b border-neutral-100 dark:border-white/5 text-left">
+              <SheetTitle className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center">
+                  <Sparkles className="text-white w-4 h-4" />
                 </div>
-                <span className="font-display font-bold text-lg tracking-tight text-foreground">
-                  SaaS<span className="text-primary">Admin</span>
+                <span className="font-outfit font-bold text-lg tracking-tighter text-neutral-900 dark:text-white leading-none">
+                  AI<span className="text-orange-500">TECH</span>
                 </span>
               </SheetTitle>
             </SheetHeader>
             
-            <nav className="p-4 space-y-1">
+            <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
               {links.map((link: any) => {
-                const isActive = location === link.href;
+                const isActive = link.href === "/" 
+                  ? location === "/" 
+                  : location === link.href || location.startsWith(link.href + "/");
                 const Icon = ICON_MAP[link.icon];
                 
                 return (
@@ -86,45 +88,50 @@ export function MobileHeader() {
                     href={link.href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group font-semibold text-sm relative overflow-hidden",
+                      "flex items-center gap-4 px-6 pr-12 py-4 rounded-full transition-all duration-300 group font-bold text-xs md:text-sm tracking-wide relative overflow-hidden h-14 font-outfit",
                       isActive 
-                        ? "text-white shadow-lg shadow-primary/20" 
-                        : "text-muted-foreground hover:text-foreground hover:bg-white/10"
+                        ? "text-white" 
+                        : "text-neutral-500 dark:text-neutral-400 hover:text-orange-500 dark:hover:text-white"
                     )}
                   >
                     {isActive && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary to-blue-500 opacity-90 -z-10" />
+                      <div className="absolute inset-x-2 inset-y-1.5 bg-orange-500 rounded-full shadow-lg shadow-orange-500/20 -z-10" />
                     )}
-                    {Icon && <Icon className={cn("w-5 h-5 transition-transform duration-300", isActive ? "scale-110 text-white" : "group-hover:scale-110 group-hover:text-primary")} />}
-                    <span className="relative z-10">{link.label}</span>
+                    {Icon && <Icon className={cn("w-5 h-5 transition-transform duration-300 relative z-10", isActive ? "scale-110 text-white" : "group-hover:scale-110")} />}
+                    <span className="relative z-10 truncate">{link.label}</span>
+                    {isActive && (
+                      <div className="absolute right-5 w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white] z-10" />
+                    )}
                   </Link>
                 );
               })}
             </nav>
 
-            <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-border/50 space-y-4 bg-background">
-               <Button 
+            <div className="p-6 border-t border-neutral-100 dark:border-white/5 space-y-4 bg-neutral-50/50 dark:bg-white/[0.01]">
+              <div className="flex items-center gap-3 px-1">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-xl bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center font-bold text-orange-500 text-xs text-center">
+                    {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-neutral-900" />
+                </div>
+                <div className="flex-1 min-w-0 font-semibold">
+                  <p className="text-xs md:text-sm font-semibold text-neutral-900 dark:text-white truncate tracking-tight">{user?.username || 'Administrator'}</p>
+                  <p className="text-xs md:text-sm text-neutral-500 dark:text-neutral-400 font-medium tracking-tight">{user?.role || 'Account Holder'}</p>
+                </div>
+              </div>
+
+              <Button 
                 variant="ghost" 
-                className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                className="w-full h-12 justify-start text-red-500 hover:text-white hover:bg-red-500 rounded-xl px-4 group transition-all duration-300 border border-transparent hover:border-red-400/50"
                 onClick={() => {
                   logout();
                   setOpen(false);
                 }}
               >
-                <LogOut className="w-5 h-5 mr-3" />
-                Logout
+                <LogOut className="w-4 h-4 mr-3 group-hover:rotate-12 transition-transform" />
+                <span className="font-bold text-xs md:text-sm tracking-tight">Sign Out</span>
               </Button>
-               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center border border-border shrink-0">
-                  <span className="text-xs font-bold text-muted-foreground">
-                    {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
-                  </span>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <p className="text-sm font-medium text-foreground truncate">{user?.username || 'Admin'}</p>
-                  <p className="text-xs text-muted-foreground truncate">Dashboard</p>
-                </div>
-              </div>
             </div>
           </SheetContent>
         </Sheet>

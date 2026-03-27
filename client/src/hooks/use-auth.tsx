@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { handleGetCurrentUser, handleLogin, handleLogout } from "@/services/api/authAPI";
+import { queryClient } from "@/lib/queryClient";
 
 type User = {
   id: number;
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await handleLogin({ username, password });
     
     if (res.success) {
+      queryClient.clear();
       setUser(res.data.user);
       toast({
         title: "Welcome back!",
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     const res = await handleLogout();
     if (res.success) {
+      queryClient.clear();
       setUser(null);
       toast({
         title: "Logged out",

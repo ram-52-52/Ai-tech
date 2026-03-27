@@ -21,7 +21,7 @@ export function AuroraBackground() {
             scale: [1, 0.8, 1.3, 1],
           }}
           transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }}
-          className="absolute bottom-1/4 right-1/4 w-[50vw] h-[50vw] rounded-full bg-blue-600/20 blur-[120px] mix-blend-screen"
+          className="absolute bottom-1/4 right-1/4 w-[50vw] h-[50vw] rounded-full bg-primary/10 blur-[120px] mix-blend-screen"
         />
         <motion.div
           animate={{

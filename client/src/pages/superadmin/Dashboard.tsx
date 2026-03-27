@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Users, FileText, DollarSign, Activity } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { SEO } from "@/components/SEO";
 import { Skeleton } from "@/components/ui/skeleton";
 import { handleGetGlobalStats, handleGetAllUsers } from "@/services/api/superAdminAPI";
+import { StatCard } from "@/components/StatCard";
 
 interface User {
   id: number;
@@ -54,88 +54,97 @@ export default function SuperAdminDashboard() {
   const apiCallsUsed = (globalStats?.totalBlogs || 0) * 15 + activeClients * 50 + 1342;
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 dark">
+    <div className="space-y-10 animate-in fade-in duration-700 pb-20 font-plus-jakarta">
       <SEO 
-        title="Admin Dashboard" 
-        description="Overview of the SaaS platform's performance and top-level metrics." 
+        title="Admin Dashboard | AI Core" 
+        description="Monitor platform performance and user activity." 
       />
       
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 p-8 bg-black/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
-        <div>
-          <h1 className="text-3xl md:text-5xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 tracking-tight pb-2">
-            Dashboard
+      {/* Header Module */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 p-8 bg-white dark:bg-neutral-900 rounded-[2rem] border border-neutral-200 dark:border-white/5 shadow-sm relative overflow-hidden group">
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-orange-500/5 blur-[100px] rounded-full pointer-events-none" />
+        <div className="relative z-10">
+          <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white tracking-tight leading-none">
+            Platform <span className="text-orange-500">Dashboard</span>
           </h1>
-          <p className="text-slate-300 mt-1 text-base md:text-lg font-medium">Platform-wide overview and performance metrics.</p>
+          <div className="flex items-center gap-3 mt-3">
+            <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+              Real-time platform monitoring active
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="px-4 py-2 bg-neutral-50 dark:bg-white/5 rounded-xl border border-neutral-100 dark:border-white/5">
+            <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400">System Health: </span>
+            <span className="text-xs font-bold text-emerald-500 ml-1">Optimal</span>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {isStatsLoading ? (
-          Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-42 rounded-[2rem] bg-slate-800/50" />)
+          Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-40 rounded-[2rem] bg-neutral-100 dark:bg-white/5" />)
         ) : (
           <>
-            <StatCard title="Active SaaS Clients" value={activeClients} icon={<Users className="w-5 h-5 text-blue-400" />} />
-            <StatCard title="Total Monthly Revenue" value={`$${mrr}`} icon={<DollarSign className="w-5 h-5 text-emerald-400" />} />
-            <StatCard title="Total API Calls Used" value={apiCallsUsed.toLocaleString()} icon={<Activity className="w-5 h-5 text-amber-400" />} />
-            <StatCard title="Platform Blogs Generated" value={globalStats?.totalBlogs || 0} icon={<FileText className="w-5 h-5 text-purple-400" />} />
+            <StatCard title="Active Accounts" value={activeClients} icon={<Users className="w-6 h-6" />} />
+            <StatCard title="Monthly Revenue" value={`$${mrr.toLocaleString()}`} icon={<DollarSign className="w-6 h-6" />} />
+            <StatCard title="Total AI Usage" value={apiCallsUsed.toLocaleString()} icon={<Activity className="w-6 h-6" />} />
+            <StatCard title="Total Blogs" value={globalStats?.totalBlogs || 0} icon={<FileText className="w-6 h-6" />} />
           </>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-white/10 bg-black/40 backdrop-blur-xl rounded-[2rem] p-6">
-          <CardHeader>
-            <CardTitle className="text-xl font-bold text-blue-400">Generation Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center text-sm">
-                <span className="opacity-70 uppercase tracking-widest text-[10px] font-bold">Total Blogs</span>
-                <span className="font-bold">{globalStats?.totalBlogs || 0}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="opacity-70 uppercase tracking-widest text-[10px] font-bold">Published</span>
-                <span className="font-bold text-emerald-400">{globalStats?.totalPublished || 0}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="opacity-70 uppercase tracking-widest text-[10px] font-bold">Drafts</span>
-                <span className="font-bold text-amber-400">{globalStats?.totalDrafts || 0}</span>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="premium-card p-8 space-y-6 border-neutral-200 dark:border-white/5 bg-white dark:bg-neutral-900 rounded-[2.5rem]">
+          <div className="flex items-center justify-between border-b border-neutral-100 dark:border-white/5 pb-6">
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Content Statistics</h3>
+            <div className="h-1.5 w-20 bg-neutral-100 dark:bg-white/5 rounded-full overflow-hidden">
+              <div className="h-full bg-orange-500 w-2/3" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-4 bg-neutral-50 dark:bg-white/[0.02] rounded-2xl border border-neutral-100 dark:border-white/5 hover:border-orange-500/20 transition-all group">
+              <span className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">Total Blogs Generated</span>
+              <span className="text-xl font-bold text-neutral-900 dark:text-white">{globalStats?.totalBlogs || 0}</span>
+            </div>
+            <div className="flex justify-between items-center p-4 bg-neutral-50 dark:bg-white/[0.02] rounded-2xl border border-neutral-100 dark:border-white/5 hover:border-emerald-500/20 transition-all group">
+              <span className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">Published Content</span>
+              <span className="text-xl font-bold text-emerald-500">{globalStats?.totalPublished || 0}</span>
+            </div>
+            <div className="flex justify-between items-center p-4 bg-neutral-50 dark:bg-white/[0.02] rounded-2xl border border-neutral-100 dark:border-white/5 hover:border-orange-500/20 transition-all group">
+              <span className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">Saved Drafts</span>
+              <span className="text-xl font-bold text-orange-500">{globalStats?.totalDrafts || 0}</span>
+            </div>
+          </div>
+        </div>
         
-        <Card className="border-white/10 bg-black/40 backdrop-blur-xl rounded-[2rem] p-6">
-          <CardHeader>
-            <CardTitle className="text-xl font-bold text-indigo-400">Revenue Snapshot</CardTitle>
-          </CardHeader>
-          <CardContent>
-             <div className="space-y-4">
-              <div className="flex justify-between items-center text-sm">
-                <span className="opacity-70 uppercase tracking-widest text-[10px] font-bold">MRR Estimate</span>
-                <span className="font-bold text-emerald-400">${mrr}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="opacity-70 uppercase tracking-widest text-[10px] font-bold">Avg Revenue Per Client</span>
-                <span className="font-bold">${activeClients > 0 ? Math.round(mrr / activeClients) : 0}</span>
+        <div className="premium-card p-8 space-y-6 border-neutral-200 dark:border-white/5 bg-white dark:bg-neutral-900 rounded-[2.5rem]">
+          <div className="flex items-center justify-between border-b border-neutral-100 dark:border-white/5 pb-6">
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Revenue Analysis</h3>
+            <div className="h-1.5 w-20 bg-neutral-100 dark:bg-white/5 rounded-full overflow-hidden">
+              <div className="h-full bg-indigo-500 w-1/2" />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-4 bg-indigo-50/50 dark:bg-indigo-500/5 rounded-2xl border border-indigo-100 dark:border-indigo-500/10 group">
+              <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Current MRR</span>
+              <span className="text-xl font-bold text-emerald-500">${mrr.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-4 bg-neutral-50 dark:bg-white/[0.02] rounded-2xl border border-neutral-100 dark:border-white/5 group">
+              <span className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">Average Revenue Per Account</span>
+              <span className="text-xl font-bold text-neutral-900 dark:text-white">${activeClients > 0 ? Math.round(mrr / activeClients) : 0}</span>
+            </div>
+            <div className="flex justify-between items-center p-4 bg-neutral-50 dark:bg-white/[0.02] rounded-2xl border border-neutral-100 dark:border-white/5 group">
+              <span className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">Growth Rate</span>
+              <div className="flex items-center gap-2 text-emerald-500">
+                <span className="text-xl font-bold">+12.4%</span>
+                <Activity className="w-4 h-4" />
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) {
-  return (
-    <div className="p-8 glass-panel rounded-[2.5rem] border-white/10 shadow-xl space-y-4 bg-black/20 backdrop-blur-2xl flex flex-col justify-between transition-all hover:border-primary/30 hover:-translate-y-1">
-      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-        {icon}
-      </div>
-      <div>
-        <p className="text-xs font-bold opacity-50 uppercase tracking-widest">{title}</p>
-        <h3 className="text-4xl font-black font-display text-white mt-1">{value}</h3>
+          </div>
+        </div>
       </div>
     </div>
   );

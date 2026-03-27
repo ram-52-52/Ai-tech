@@ -1,21 +1,47 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sparkles, Home, ShieldAlert } from "lucide-react";
+import { Link } from "wouter";
+import { SEO } from "@/components/SEO";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
-          </div>
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#050505] relative overflow-hidden p-6">
+      <SEO title="Void Lost | AI TECH" description="Signal lost in the neural manifold." />
+      
+      {/* Background Glows */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/10 blur-[150px] rounded-full" />
+      
+      <div className="relative z-10 text-center space-y-8 max-w-lg">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-xs md:text-sm font-bold tracking-wide mb-4">
+          <ShieldAlert className="w-3.5 h-3.5" /> Signal Interference
+        </div>
 
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
-          </p>
-        </CardContent>
-      </Card>
+        <div className="space-y-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white tracking-tight leading-none">
+            Void<span className="text-primary ml-4">Lost</span>
+          </h1>
+          <p className="text-muted-foreground/40 text-xs md:text-sm font-bold tracking-[0.1em]">The requested manifold does not exist in the current neural buffer.</p>
+        </div>
+
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Link href="/">
+            <Button className="h-16 px-10 bg-primary hover:bg-orange-600 rounded-2xl font-bold tracking-wide text-xs md:text-sm shadow-2xl shadow-primary/20 group">
+              <Home className="w-4 h-4 mr-3 group-hover:-translate-y-0.5 transition-transform" />
+              Return to Hub
+            </Button>
+          </Link>
+          <Button variant="ghost" className="h-16 px-10 rounded-2xl font-bold tracking-wide text-xs md:text-sm border border-white/5 hover:bg-white/5 text-muted-foreground/60 transition-all">
+            Report Anomaly
+          </Button>
+        </div>
+      </div>
+
+      <div className="absolute bottom-10 left-10 opacity-10">
+         <div className="flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <span className="text-xs md:text-sm font-bold tracking-tight">AI TECH CORE</span>
+         </div>
+      </div>
     </div>
   );
 }
