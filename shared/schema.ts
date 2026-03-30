@@ -61,6 +61,15 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const inquiries = pgTable("inquiries", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  message: text("message").notNull(),
+  status: text("status").default("new").notNull(), // 'new', 'read', 'replied'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const logs = pgTable("logs", {
   id: serial("id").primaryKey(),
   userId: integer("user_id"),
@@ -91,6 +100,11 @@ export const insertScheduledPostSchema = createInsertSchema(scheduledPosts).omit
   createdAt: true,
 });
 
+export const insertInquirySchema = createInsertSchema(inquiries).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertLogSchema = createInsertSchema(logs).omit({
   id: true,
   timestamp: true,
@@ -107,3 +121,5 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Log = typeof logs.$inferSelect;
 export type InsertLog = z.infer<typeof insertLogSchema>;
+export type Inquiry = typeof inquiries.$inferSelect;
+export type InsertInquiry = z.infer<typeof insertInquirySchema>;

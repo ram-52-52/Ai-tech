@@ -208,6 +208,20 @@ export async function registerRoutes(
       res.status(500).json({ message: err.message });
     }
   });
+  
+  app.get("/api/admin/inquiries", checkSuperAdmin, async (req: any, res) => {
+    try {
+      const { page, limit, search } = req.query;
+      const result = await storage.getInquiries({
+        page: page ? Number(page) : 1,
+        limit: limit ? Number(limit) : 10,
+        search: search ? String(search) : undefined
+      });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
 
   app.get("/api/plans", async (_req, res) => {
     try {
@@ -623,6 +637,9 @@ export async function registerRoutes(
     try {
       await sendContactNotification(name, email, message);
       
+      // Save to database
+      await storage.createInquiry({ name, email, message });
+
       // Log as system activity
       await storage.createLog({
         action: "CONTACT_INQUIRY",

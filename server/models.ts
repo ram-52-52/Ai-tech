@@ -159,3 +159,21 @@ PlanSchema.pre("save", async function(this: any) {
 });
 
 export const PlanModel = mongoose.model("Plan", PlanSchema);
+
+// Inquiry Schema
+const InquirySchema = new Schema({
+  id: { type: Number, unique: true },
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  message: { type: String, required: true },
+  status: { type: String, enum: ['new', 'read', 'replied'], default: 'new' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+InquirySchema.pre("save", async function(this: any) {
+  if (this.isNew && !this.id) {
+    this.id = await getNextSequenceValue("inquiryId");
+  }
+});
+
+export const InquiryModel = mongoose.model("Inquiry", InquirySchema);

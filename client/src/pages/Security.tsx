@@ -1,11 +1,12 @@
 import { SEO } from "@/components/SEO";
 import { Link } from "wouter";
 import { Zap, ArrowLeft, ShieldCheck, Lock, Activity, Server, Database, Key } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 
 export default function SecurityPage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-neutral-900 dark:text-white font-plus-jakarta selection:bg-orange-500/30">
+    <div className="min-h-screen bg-white dark:bg-black text-neutral-900 dark:text-white font-plus-jakarta selection:bg-orange-500/30 flex flex-col">
       <SEO title="Security | AI TECH" />
       
       {/* Header */}
@@ -13,10 +14,7 @@ export default function SecurityPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/">
             <div className="flex items-center gap-2 group cursor-pointer scale-90 md:scale-100 origin-left">
-              <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:rotate-12 transition-transform">
-                <Zap className="w-6 h-6 text-white" />
-              </div>
-              <span className="font-outfit font-black text-xl tracking-tighter text-neutral-900 dark:text-white uppercase">AI TECH</span>
+              <Logo />
             </div>
           </Link>
           <Link href="/">
@@ -27,8 +25,9 @@ export default function SecurityPage() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <header className="relative pt-40 pb-20 px-6 overflow-hidden">
+      <div className="flex-1">
+        {/* Hero Section */}
+        <header className="relative pt-40 pb-20 px-6 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full">
             <div className="absolute top-10 right-0 w-[40rem] h-[40rem] bg-orange-500/5 blur-[128px] rounded-full" />
             <div className="absolute top-40 left-0 w-[30rem] h-[30rem] bg-orange-600/10 blur-[128px] rounded-full animate-pulse" />
@@ -106,14 +105,14 @@ export default function SecurityPage() {
 
       {/* Security Architecture CTA */}
       <section className="max-w-7xl mx-auto py-20 px-6 pb-40">
-        <div className="bg-neutral-900 dark:bg-neutral-950 p-12 md:p-20 rounded-[4rem] text-center space-y-8 relative overflow-hidden ring-1 ring-white/10">
+        <div className="bg-neutral-900 dark:bg-neutral-950 p-6 md:p-20 rounded-[4rem] text-center space-y-8 relative overflow-hidden ring-1 ring-white/10">
             <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/5 blur-[100px] rounded-full" />
             <div className="max-w-3xl mx-auto space-y-6 relative z-10">
                 <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">Your content is a <span className="text-orange-500">strategic asset</span>.</h2>
                 <p className="text-neutral-400 font-bold text-lg leading-relaxed">We provide a full security whitepaper for enterprise clients. Learn more about our technical stack and compliance measures.</p>
                 <div className="pt-8">
                      <Link href="/contact">
-                        <Button className="h-16 px-12 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest shadow-2xl shadow-orange-500/30 transition-all hover:scale-105">
+                        <Button className="h-16 w-full sm:w-auto px-6 md:px-12 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-tight md:tracking-widest shadow-2xl shadow-orange-500/30 transition-all hover:scale-105 whitespace-normal sm:whitespace-nowrap">
                             Download Security Whitepaper
                         </Button>
                      </Link>
@@ -121,6 +120,7 @@ export default function SecurityPage() {
             </div>
         </div>
       </section>
+      </div>
 
       {/* Footer */}
       <footer className="py-20 border-t border-neutral-100 dark:border-neutral-900 text-center">

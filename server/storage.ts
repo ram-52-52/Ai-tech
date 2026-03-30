@@ -1,10 +1,10 @@
 import { db } from "./db";
-import { blogs, trends, externalSites, scheduledPosts, users, logs, type Blog, type InsertBlog, type Trend, type ExternalSite, type InsertExternalSite, type ScheduledPost, type InsertScheduledPost, type User, type InsertUser, type Log, type InsertLog } from "../shared/schema";
+import { blogs, trends, externalSites, scheduledPosts, users, logs, inquiries, type Blog, type InsertBlog, type Trend, type ExternalSite, type InsertExternalSite, type ScheduledPost, type InsertScheduledPost, type User, type InsertUser, type Log, type InsertLog, type Inquiry, type InsertInquiry } from "../shared/schema";
 import { eq, desc, lte, and, or, like, sql } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { BlogModel, TrendModel, ExternalSiteModel, ScheduledPostModel, UserModel, LogModel } from "./models";
+import { BlogModel, TrendModel, ExternalSiteModel, ScheduledPostModel, UserModel, LogModel, InquiryModel } from "./models";
 
 export interface IStorage {
   // Users
@@ -56,6 +56,10 @@ export interface IStorage {
   // Logs
   getLogs(options?: { userId?: number; page?: number; limit?: number }): Promise<{ logs: Log[]; total: number }>;
   createLog(log: InsertLog & { userId?: number; username?: string }): Promise<Log>;
+
+  // Inquiries
+  getInquiries(options?: { page?: number; limit?: number; search?: string }): Promise<{ inquiries: Inquiry[]; total: number }>;
+  createInquiry(inquiry: InsertInquiry): Promise<Inquiry>;
 
   // Plans
   getPlans(): Promise<any[]>;
@@ -373,6 +377,36 @@ export class MongoStorage implements IStorage {
     return log.toObject() as Log;
   }
 
+  // Inquiry Implementation
+  async getInquiries(options: { page?: number; limit?: number; search?: string } = {}): Promise<{ inquiries: Inquiry[]; total: number }> {
+    const { page = 1, limit = 10, search } = options;
+    const query: any = {};
+    if (search) {
+      const escapedSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.$or = [
+        { name: { $regex: escapedSearch, $options: 'i' } },
+        { email: { $regex: escapedSearch, $options: 'i' } },
+        { message: { $regex: escapedSearch, $options: 'i' } }
+      ];
+    }
+    const total = await InquiryModel.countDocuments(query);
+    const docs = await InquiryModel.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+    
+    return {
+      inquiries: docs.map(doc => doc.toObject() as Inquiry),
+      total
+    };
+  }
+
+  async createInquiry(insertInquiry: InsertInquiry): Promise<Inquiry> {
+    const doc = new InquiryModel(insertInquiry);
+    await doc.save();
+    return doc.toObject() as Inquiry;
+  }
+
   // Plan Implementation
   async getPlans(): Promise<any[]> {
     const { PlanModel } = await import("./models");
@@ -645,6 +679,37 @@ export class DatabaseStorage implements IStorage {
     return log;
   }
 
+  async getInquiries(options: { page?: number; limit?: number; search?: string } = {}): Promise<{ inquiries: Inquiry[]; total: number }> {
+    const { page = 1, limit = 10, search } = options;
+    const offset = (page - 1) * limit;
+
+    let query = db.select().from(inquiries);
+    
+    if (search) {
+      const searchPattern = `%${search.toLowerCase()}%`;
+      query = query.where(
+        or(
+          like(sql`lower(${inquiries.name})`, searchPattern),
+          like(sql`lower(${inquiries.email})`, searchPattern),
+          like(sql`lower(${inquiries.message})`, searchPattern)
+        )
+      ) as any;
+    }
+
+    const allInquiries = await query.orderBy(desc(inquiries.createdAt));
+    const total = allInquiries.length;
+    
+    return {
+      inquiries: allInquiries.slice(offset, offset + limit),
+      total
+    };
+  }
+
+  async createInquiry(insertInquiry: InsertInquiry): Promise<Inquiry> {
+    const [inquiry] = await db.insert(inquiries).values(insertInquiry).returning();
+    return inquiry;
+  }
+
   async getPlans(): Promise<any[]> { return []; }
   async getPlanByName(_name: string): Promise<any | undefined> { return undefined; }
   async createPlan(_plan: any): Promise<any> { return {}; }
@@ -658,11 +723,13 @@ export class MemStorage implements IStorage {
   private trends: Map<number, Trend>;
   private externalSites: Map<number, ExternalSite>;
   private scheduledPosts: Map<number, ScheduledPost>;
+  private inquiries: Map<number, Inquiry>;
   private userId: number;
   private blogId: number;
   private trendId: number;
   private siteId: number;
   private postId: number;
+  private inquiryId: number;
 
   private storagePath: string;
 
@@ -672,11 +739,13 @@ export class MemStorage implements IStorage {
     this.trends = new Map();
     this.externalSites = new Map();
     this.scheduledPosts = new Map();
+    this.inquiries = new Map();
     this.userId = 1;
     this.blogId = 1;
     this.trendId = 1;
     this.siteId = 1;
     this.postId = 1;
+    this.inquiryId = 1;
     this.storagePath = path.resolve(process.cwd(), "tmp-storage.json");
 
     this.loadFromDisk();
@@ -717,6 +786,7 @@ export class MemStorage implements IStorage {
         trends: Array.from(this.trends.entries()),
         externalSites: Array.from(this.externalSites.entries()),
         scheduledPosts: Array.from(this.scheduledPosts.entries()),
+        inquiries: Array.from(this.inquiries.entries()),
         blogId: this.blogId,
         trendId: this.trendId,
         siteId: this.siteId,
@@ -738,6 +808,7 @@ export class MemStorage implements IStorage {
         this.trends = new Map(data.trends);
         this.externalSites = new Map(data.externalSites);
         this.scheduledPosts = new Map(data.scheduledPosts);
+        this.inquiries = new Map(data.inquiries || []);
         this.blogId = data.blogId;
         this.trendId = data.trendId;
         this.siteId = data.siteId;
@@ -872,12 +943,6 @@ export class MemStorage implements IStorage {
     return blog;
   }
 
-  // Admin Plan Placeholders (SQL not yet implemented)
-  async getPlans(): Promise<any[]> { return []; }
-  async getPlanByName(_name: string): Promise<any | undefined> { return undefined; }
-  async createPlan(_plan: any): Promise<any> { return {}; }
-  async updatePlan(_name: string, _updates: any): Promise<any> { return {}; }
-  async seedPlans(): Promise<void> { }
 
   async updateBlog(id: number, updates: Partial<InsertBlog>): Promise<Blog> {
     const blog = this.blogs.get(id);
@@ -1005,6 +1070,64 @@ export class MemStorage implements IStorage {
     this.saveToDisk();
   }
 
+  async getLogs(options: { userId?: number; page?: number; limit?: number } = {}): Promise<{ logs: Log[]; total: number }> {
+    const { userId, page = 1, limit = 20 } = options;
+    const all = Array.from((this as any).logs?.values() || []) as Log[];
+    const filtered = userId ? all.filter(l => l.userId === userId) : all;
+    const sorted = filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return {
+      logs: sorted.slice((page - 1) * limit, page * limit),
+      total: filtered.length
+    };
+  }
+
+  async createLog(insertLog: InsertLog & { userId?: number; username?: string }): Promise<Log> {
+    const id = Date.now(); // Simple hack for MemStorage log IDs
+    const log: Log = {
+      ...insertLog,
+      id,
+      userId: insertLog.userId ?? null,
+      username: insertLog.username ?? null,
+      details: insertLog.details ?? null,
+      timestamp: new Date()
+    };
+    if (!(this as any).logs) (this as any).logs = new Map();
+    (this as any).logs.set(id, log);
+    this.saveToDisk();
+    return log;
+  }
+
+  async getInquiries(options: { page?: number; limit?: number; search?: string } = {}): Promise<{ inquiries: Inquiry[]; total: number }> {
+    const { page = 1, limit = 10, search } = options;
+    let all = Array.from(this.inquiries.values());
+    if (search) {
+      const lower = search.toLowerCase();
+      all = all.filter(i => 
+        i.name.toLowerCase().includes(lower) || 
+        i.email.toLowerCase().includes(lower) || 
+        i.message.toLowerCase().includes(lower)
+      );
+    }
+    const sorted = all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return {
+      inquiries: sorted.slice((page - 1) * limit, page * limit),
+      total: all.length
+    };
+  }
+
+  async createInquiry(insertInquiry: InsertInquiry): Promise<Inquiry> {
+    const id = this.inquiryId++;
+    const inquiry: Inquiry = {
+      ...insertInquiry,
+      id,
+      status: insertInquiry.status || 'new',
+      createdAt: new Date()
+    };
+    this.inquiries.set(id, inquiry);
+    this.saveToDisk();
+    return inquiry;
+  }
+
   async incrementUserBlogCount(userId: number): Promise<void> {
     const user = this.users.get(userId);
     if (user) {
@@ -1025,14 +1148,11 @@ export class MemStorage implements IStorage {
     };
   }
 
-  async getLogs(options: { userId?: number; page?: number; limit?: number } = {}): Promise<{ logs: Log[]; total: number }> {
-    return { logs: [], total: 0 };
-  }
-
-  async createLog(insertLog: InsertLog & { userId?: number; username?: string }): Promise<Log> {
-    const id = Math.floor(Math.random() * 1000000);
-    return { ...insertLog, id, timestamp: new Date() } as Log;
-  }
+  async getPlans(): Promise<any[]> { return []; }
+  async getPlanByName(_name: string): Promise<any | undefined> { return undefined; }
+  async createPlan(_plan: any): Promise<any> { return {}; }
+  async updatePlan(_name: string, _updates: any): Promise<any> { return {}; }
+  async seedPlans(): Promise<void> { }
 }
 
 export const storage = process.env.MONGODB_URI

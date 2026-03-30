@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Sparkles, Home, ShieldAlert } from "lucide-react";
+import { Home, ShieldAlert } from "lucide-react";
 import { Link } from "wouter";
 import { SEO } from "@/components/SEO";
+import { Logo } from "@/components/Logo";
 
 export default function NotFound() {
   return (
@@ -36,11 +37,8 @@ export default function NotFound() {
         </div>
       </div>
 
-      <div className="absolute bottom-10 left-10 opacity-10">
-         <div className="flex items-center gap-3">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <span className="text-xs md:text-sm font-bold tracking-tight">AI TECH CORE</span>
-         </div>
+      <div className="absolute bottom-10 left-10 opacity-30">
+          <Logo showText={true} size={32} className="hover:opacity-100 transition-opacity" />
       </div>
     </div>
   );

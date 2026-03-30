@@ -1,11 +1,12 @@
 import { SEO } from "@/components/SEO";
 import { Link } from "wouter";
-import { Zap, ArrowLeft, Shield, Eye, Lock, Globe } from "lucide-react";
+import { ArrowLeft, Shield, Eye, Lock, Globe } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-neutral-900 dark:text-white font-plus-jakarta selection:bg-orange-500/30">
+    <div className="min-h-screen bg-white dark:bg-black text-neutral-900 dark:text-white font-plus-jakarta selection:bg-orange-500/30 flex flex-col">
       <SEO title="Privacy Policy | AI TECH" />
       
       {/* Header */}
@@ -13,10 +14,7 @@ export default function PrivacyPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/">
             <div className="flex items-center gap-2 group cursor-pointer scale-90 md:scale-100 origin-left">
-              <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:rotate-12 transition-transform">
-                <Zap className="w-6 h-6 text-white" />
-              </div>
-              <span className="font-outfit font-black text-xl tracking-tighter text-neutral-900 dark:text-white uppercase">AI TECH</span>
+              <Logo />
             </div>
           </Link>
           <Link href="/">
@@ -27,8 +25,9 @@ export default function PrivacyPage() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <header className="relative pt-40 pb-20 px-6 overflow-hidden">
+      <div className="flex-1">
+        {/* Hero Section */}
+        <header className="relative pt-40 pb-20 px-6 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full">
             <div className="absolute top-20 right-0 w-96 h-96 bg-orange-500/10 blur-[128px] rounded-full animate-pulse" />
             <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/5 blur-[128px] rounded-full" />
@@ -110,7 +109,7 @@ export default function PrivacyPage() {
             <p className="text-neutral-500 font-bold">Our compliance team is ready to help you.</p>
             <div className="pt-6">
                <Link href="/contact">
-                    <Button className="h-14 px-10 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest shadow-xl shadow-orange-500/20 transition-all hover:scale-105 active:scale-95">
+                    <Button className="h-14 w-full sm:w-auto px-6 md:px-10 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-wider md:tracking-widest shadow-xl shadow-orange-500/20 transition-all hover:scale-105 active:scale-95">
                         Contact Privacy Team
                     </Button>
                </Link>
@@ -118,6 +117,7 @@ export default function PrivacyPage() {
           </section>
         </div>
       </main>
+      </div>
 
       {/* Footer Space Fix */}
       <footer className="py-20 border-t border-neutral-100 dark:border-neutral-900 text-center">

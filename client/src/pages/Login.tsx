@@ -4,7 +4,8 @@ import { Redirect } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Sparkles, Loader2, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Loader2, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { SEO } from "@/components/SEO";
 
 export default function Login() {
@@ -49,9 +50,7 @@ export default function Login() {
       
       <div className="w-full max-w-[440px] space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div className="text-center space-y-3">
-          <div className="inline-flex w-14 h-14 rounded-xl bg-orange-500 items-center justify-center shadow-lg shadow-orange-500/20 mb-4 mx-auto border border-white/10">
-            <Sparkles className="text-white w-7 h-7" />
-          </div>
+          <Logo showText={false} className="justify-center mb-6" size={60} />
           <h1 className="font-bold text-2xl md:text-3xl lg:text-4xl tracking-tight text-neutral-900 dark:text-white leading-none">
             Welcome Back
           </h1>

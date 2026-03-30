@@ -16,6 +16,7 @@ import SuperAdminBilling from "@/pages/superadmin/Billing";
 import SuperAdminLogs from "@/pages/superadmin/Logs";
 import SuperAdminPlan from "@/pages/superadmin/AIQuotaPlan";
 import SuperAdminBlogs from "@/pages/superadmin/SuperAdminBlogs";
+import SuperAdminInquiries from "@/pages/superadmin/Inquiries";
 import NotFound from "@/pages/not-found";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AnimatePresence } from "framer-motion";
@@ -104,6 +105,7 @@ function Router() {
                     <Route path="/superadmin/logs" component={SuperAdminLogs} />
                     <Route path="/superadmin/plan" component={SuperAdminPlan} />
                     <Route path="/superadmin/blogs" component={SuperAdminBlogs} />
+                    <Route path="/superadmin/inquiries" component={SuperAdminInquiries} />
                   </>
                 )}
                 <Route path="/privacy" component={PrivacyPage} />

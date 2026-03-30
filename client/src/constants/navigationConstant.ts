@@ -20,6 +20,7 @@ export const SUPERADMIN_ROUTES = [
   "/superadmin/logs",
   "/superadmin/plan",
   "/superadmin/blogs",
+  "/superadmin/inquiries",
 ];
 
 export const NAVIGATION_ITEMS = [
@@ -37,4 +38,5 @@ export const SUPERADMIN_NAVIGATION_ITEMS = [
   { label: "Billing & Subscriptions", href: "/superadmin/billing", icon: "CreditCard", roles: ["superadmin"] },
   { label: "Platform Logs", href: "/superadmin/logs", icon: "Activity", roles: ["superadmin"] },
   { label: "AI Quota & Plan", href: "/superadmin/plan", icon: "PieChart", roles: ["superadmin"] },
+  { label: "Inquiries", href: "/superadmin/inquiries", icon: "FileText", roles: ["superadmin"] },
 ];

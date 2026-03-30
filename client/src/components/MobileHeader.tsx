@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { NAVIGATION_ITEMS, SUPERADMIN_NAVIGATION_ITEMS } from "@/constants/navigationConstant";
+import { Logo } from "@/components/Logo";
 
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard,
@@ -46,13 +47,8 @@ export function MobileHeader() {
 
   return (
     <header className="fixed top-0 left-0 right-0 h-20 border-b border-neutral-200 dark:border-white/5 flex items-center justify-between px-6 z-40 lg:hidden bg-white/80 dark:bg-neutral-950/80 backdrop-blur-3xl">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-orange-500 shadow-lg shadow-orange-500/20 flex items-center justify-center">
-          <Sparkles className="text-white w-5 h-5" />
-        </div>
-        <h1 className="font-outfit font-bold text-xl tracking-tighter text-neutral-900 dark:text-white leading-none">
-          AI<span className="text-orange-500">TECH</span>
-        </h1>
+      <div className="flex items-center gap-3" onClick={() => (window.location.href = "/")}>
+        <Logo showText={true} className="scale-90 origin-left" />
       </div>
 
       <div className="flex items-center gap-2">
@@ -66,12 +62,7 @@ export function MobileHeader() {
           <SheetContent side="left" className="w-[280px] p-0 border-r border-neutral-200 dark:border-white/10 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-3xl flex flex-col shadow-2xl">
             <SheetHeader className="p-8 border-b border-neutral-100 dark:border-white/5 text-left">
               <SheetTitle className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center">
-                  <Sparkles className="text-white w-4 h-4" />
-                </div>
-                <span className="font-outfit font-bold text-lg tracking-tighter text-neutral-900 dark:text-white leading-none">
-                  AI<span className="text-orange-500">TECH</span>
-                </span>
+                <Logo showText={true} className="scale-90 origin-left" />
               </SheetTitle>
             </SheetHeader>
             

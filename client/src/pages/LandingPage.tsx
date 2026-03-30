@@ -20,6 +20,7 @@ import {
   X,
   Menu
 } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { useTheme } from "@/components/ThemeProvider";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
@@ -54,10 +55,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <Link href="/">
             <div className="flex items-center gap-2 group cursor-pointer">
-              <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
-                <Zap className="w-6 h-6 text-white" />
-              </div>
-              <span className="font-outfit font-black text-xl tracking-tighter text-neutral-900 dark:text-white uppercase">AI TECH</span>
+              <Logo />
             </div>
           </Link>
 
@@ -306,11 +304,8 @@ export default function LandingPage() {
       <footer className="px-6 bg-white dark:bg-neutral-950 border-t border-neutral-200/50 dark:border-neutral-800/50">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-10">
           <div className="space-y-6 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-2 group cursor-pointer">
-              <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:scale-110 transition-transform">
-                <Zap className="text-white w-6 h-6" />
-              </div>
-              <span className="font-outfit text-2xl font-black text-neutral-900 dark:text-white tracking-tighter uppercase">AI TECH</span>
+            <div className="flex items-center justify-center md:justify-start gap-2 group cursor-pointer" onClick={() => (window.location.href = "/")}>
+              <Logo />
             </div>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 font-bold leading-relaxed max-w-sm">
               Next-generation SEO automation. We help forward-thinking teams scale content without breaking the bank.

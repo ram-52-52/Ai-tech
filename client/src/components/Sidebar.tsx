@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-
 import { motion } from "framer-motion";
 import { NAVIGATION_ITEMS, SUPERADMIN_NAVIGATION_ITEMS } from "@/constants/navigationConstant";
+import { Logo } from "@/components/Logo";
 
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard,
@@ -36,15 +36,11 @@ export function Sidebar() {
     <aside className="w-[280px] h-[calc(100vh-2rem)] fixed left-4 top-4 rounded-[2.5rem] shadow-2xl overflow-hidden hidden lg:flex flex-col z-50 transition-all duration-700 border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
       <div className="p-8 relative flex-1">
         {/* Logo Section */}
-        <div className="flex items-center gap-4 mb-12 group cursor-pointer" onClick={() => window.location.href = '/'}>
-          <div className="relative">
-            <div className="w-12 h-12 rounded-2xl bg-orange-500 shadow-lg shadow-orange-500/20 transition-transform duration-500 group-hover:rotate-6 flex items-center justify-center">
-              <Sparkles className="text-white w-6 h-6 group-hover:scale-110 transition-transform" />
-            </div>
-          </div>
-          <h1 className="font-outfit font-bold text-2xl tracking-tighter text-neutral-900 dark:text-white leading-none">
-            AI<span className="text-orange-500">TECH</span>
-          </h1>
+        <div 
+          className="mb-12 group" 
+          onClick={() => window.location.href = '/'}
+        >
+          <Logo />
         </div>
 
         {/* Navigation Section */}
