@@ -151,11 +151,14 @@ export const createBlog = async (req: Request, res: Response) => {
     if (!clientId) return res.status(401).json({ message: "No client profile" });
 
     const isScheduling = !!req.body.scheduledAt;
+    // SECURITY DEFAULT: All manually created blogs start as Draft unless frontend
+    // explicitly sends isPublished: true (e.g. via 'Publish Immediately' button).
+    const explicitlyPublishing = req.body.isPublished === true && !isScheduling;
     const body = { 
       ...req.body, 
       clientId,
-      isPublished: isScheduling ? false : (req.body.isPublished ?? true),
-      publishedAt: isScheduling ? null : new Date()
+      isPublished: explicitlyPublishing ? true : false,
+      publishedAt: explicitlyPublishing ? new Date() : null
     };
 
     const input = api.blogs.create.input.parse(body);
@@ -246,11 +249,13 @@ export const generateBlog = async (req: Request, res: Response) => {
     }
 
     const generatedBlogData = await generateBlogPost(topic || "AI Technology");
+    // DRAFT DEFAULT: AI-generated blogs are NEVER auto-published.
+    // The user must explicitly schedule or click 'Publish Immediately'.
     const blog = await storage.createBlog({ 
       ...generatedBlogData, 
       clientId,
-      isPublished: true,
-      publishedAt: new Date()
+      isPublished: false,
+      publishedAt: null
     });
 
     await storage.incrementUserBlogCount(user.id);
