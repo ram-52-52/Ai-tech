@@ -84,7 +84,7 @@ export const ExternalSiteModel = mongoose.model("ExternalSite", ExternalSiteSche
 
 // Scheduled Post Schema
 const ScheduledPostSchema = new Schema({
-  id: { type: Number, required: true, unique: true },
+  id: { type: Number, unique: true },
   clientId: { type: String },
   blogId: { type: Number, required: true },
   siteId: { type: Number, required: true },

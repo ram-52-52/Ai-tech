@@ -78,7 +78,11 @@
         document.title = "Blog"; // Reset title on list view
         container.innerHTML = '<div class="at-loader">Loading blogs...</div>';
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/feed/${siteId}`);
+            // Disabled caching to ensure real-time status updates (User Requirement 2)
+            const response = await fetch(`${API_BASE_URL}/api/v1/feed/${siteId}`, { 
+                cache: 'no-store',
+                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+            });
             if (!response.ok) throw new Error('Failed to fetch feed');
             const blogs = await response.json();
 
@@ -87,8 +91,16 @@
                 return;
             }
 
+            // Frontend Failsafe: Filter published blogs strictly (User Requirement 1)
+            const filteredBlogs = blogs.filter(blog => blog.isPublished === true);
+            
+            if (filteredBlogs.length === 0) {
+                container.innerHTML = '<div class="at-empty">No blogs available yet.</div>';
+                return;
+            }
+
             let html = '<div class="at-blog-list">';
-            blogs.forEach(blog => {
+            filteredBlogs.forEach(blog => {
                 const date = new Date(blog.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                 html += `
                     <div class="at-blog-card">

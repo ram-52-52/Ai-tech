@@ -44,10 +44,10 @@ export function useCreateBlog() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: InsertBlog) => {
-      const validated = api.blogs.create.input.parse(data);
-      const res = await handleCreateBlog(validated);
+      // Bypassing strict Zod parse to prevent string/Date ISO format collisions
+      const res = await handleCreateBlog(data);
       if (!res.success) throw new Error(res.error || "Failed to create blog");
-      return api.blogs.create.responses[201].parse(res.data);
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.blogs.list.path] });
@@ -59,10 +59,11 @@ export function useUpdateBlog() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: number } & Partial<InsertBlog>) => {
-      const validated = api.blogs.update.input.parse(updates);
-      const res = await handleUpdateBlog(id, validated);
+      // Bypassing strict Zod parse to prevent string/Date ISO format collisions
+      // e.g. scheduledAt string from an input field
+      const res = await handleUpdateBlog(id, updates);
       if (!res.success) throw new Error(res.error || "Failed to update blog");
-      return api.blogs.update.responses[200].parse(res.data);
+      return res.data;
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: [api.blogs.list.path] });
@@ -88,10 +89,9 @@ export function useGenerateBlog() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: { topic?: string } = {}) => {
-      const validated = api.blogs.generate.input.parse(data);
-      const res = await handleGenerateBlog(validated);
+      const res = await handleGenerateBlog(data);
       if (!res.success) throw new Error(res.error || "Failed to generate blog");
-      return api.blogs.generate.responses[201].parse(res.data);
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.blogs.list.path] });

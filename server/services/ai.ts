@@ -107,16 +107,16 @@ export async function generateBlogPost(topic: string): Promise<InsertBlog> {
     const introPrompt = `Write ONLY the "Introduction" section for a blog post about "${pureSubject}". This section MUST be between 240 and 260 words. Output ONLY raw HTML using <p> and <strong>. Hook the reader, give deep background, and outline what will be covered. No <h1> or <h2> tags in this section. Do not summarize or cut short.`;
 
     // --- Section 2: Core Concepts & Fundamentals (~400 words, IMAGE 1) ---
-    const corePrompt = `Write ONLY the "Core Concepts & Fundamentals" section for a 2000-word blog post about "${pureSubject}". This section MUST be between 400 and 450 words. Use <h2> and <h3> subheadings. Write detailed, long paragraphs. CRITICAL: In the exact middle of this section, insert this placeholder EXACTLY as written: <img src='INSERT_CONTEXT_IMAGE_1' alt='A professional visual showing the core fundamentals and key principles of ${pureSubject}' class='inline-ai-image' style='width:100%; border-radius:10px; margin: 2rem 0;' />. Output ONLY raw HTML. Do not add any introduction or closing remarks.`;
+    const corePrompt = `Write ONLY the "Core Concepts & Fundamentals" section for a 2000-word blog post about "${pureSubject}". This section MUST be between 400 and 450 words. Use <h2> and <h3> subheadings. Write detailed, long paragraphs. CRITICAL: In the exact middle of this section, insert this placeholder EXACTLY as written: <img src='INSERT_CONTEXT_IMAGE_1' alt='${pureSubject} architecture and heritage' class='inline-ai-image' style='width:100%; border-radius:10px; margin: 2rem 0;' />. Output ONLY raw HTML. Do not add any introduction or closing remarks.`;
 
     // --- Section 3: In-Depth Analysis & Real-World Examples (~400 words, IMAGE 2) ---
-    const caseStudiesPrompt = `Write ONLY the "In-Depth Analysis & Real-World Examples" section for a 2000-word blog post about "${pureSubject}". This section MUST be between 400 and 450 words. Use <h2> and <h3>. Include specific statistics, case studies, and practical applications. CRITICAL: In the exact middle of this section, insert this placeholder EXACTLY as written: <img src='INSERT_CONTEXT_IMAGE_2' alt='A real-world case study or data visualization related to ${pureSubject} in practice' class='inline-ai-image' style='width:100%; border-radius:10px; margin: 2rem 0;' />. Output ONLY raw HTML. Do not add any introduction or closing remarks.`;
+    const caseStudiesPrompt = `Write ONLY the "In-Depth Analysis & Real-World Examples" section for a 2000-word blog post about "${pureSubject}". This section MUST be between 400 and 450 words. Use <h2> and <h3>. Include specific statistics, case studies, and practical applications. CRITICAL: In the exact middle of this section, insert this placeholder EXACTLY as written: <img src='INSERT_CONTEXT_IMAGE_2' alt='${pureSubject} industry and development' class='inline-ai-image' style='width:100%; border-radius:10px; margin: 2rem 0;' />. Output ONLY raw HTML. Do not add any introduction or closing remarks.`;
 
     // --- Section 4: Advanced Strategies & Technical Details (~400 words, IMAGE 3) ---
-    const advancedPrompt = `Write ONLY the "Advanced Strategies & Technical Details" section for a 2000-word blog post about "${pureSubject}". This section MUST be between 400 and 450 words. Provide step-by-step expert insights, technical details, and actionable strategies. Use <h2>, <h3>, <ul>, <li>. CRITICAL: In the exact middle of this section, insert this placeholder EXACTLY as written: <img src='INSERT_CONTEXT_IMAGE_3' alt='An expert demonstrating advanced technical strategy for ${pureSubject}' class='inline-ai-image' style='width:100%; border-radius:10px; margin: 2rem 0;' />. Output ONLY raw HTML. Do not add any introduction or closing remarks.`;
+    const advancedPrompt = `Write ONLY the "Advanced Strategies & Technical Details" section for a 2000-word blog post about "${pureSubject}". This section MUST be between 400 and 450 words. Provide step-by-step expert insights, technical details, and actionable strategies. Use <h2>, <h3>, <ul>, <li>. CRITICAL: In the exact middle of this section, insert this placeholder EXACTLY as written: <img src='INSERT_CONTEXT_IMAGE_3' alt='${pureSubject} cultural landscape' class='inline-ai-image' style='width:100%; border-radius:10px; margin: 2rem 0;' />. Output ONLY raw HTML. Do not add any introduction or closing remarks.`;
 
     // --- Section 5: Future Trends & Industry Impact (~350 words, IMAGE 4) ---
-    const futurePrompt = `Write ONLY the "Future Trends & Industry Impact" section for a 2000-word blog post about "${pureSubject}". This section MUST be between 340 and 370 words. Forecast where this topic is heading in the next 5 years. Use <h2>, <h3>, <blockquote> for expert quotes. CRITICAL: In the exact middle of this section, insert this placeholder EXACTLY as written: <img src='INSERT_CONTEXT_IMAGE_4' alt='A futuristic visualization of upcoming trends and the industry impact of ${pureSubject}' class='inline-ai-image' style='width:100%; border-radius:10px; margin: 2rem 0;' />. Output ONLY raw HTML. Do not add any introduction or closing remarks.`;
+    const futurePrompt = `Write ONLY the "Future Trends & Industry Impact" section for a 2000-word blog post about "${pureSubject}". This section MUST be between 340 and 370 words. Forecast where this topic is heading in the next 5 years. Use <h2>, <h3>, <blockquote> for expert quotes. CRITICAL: In the exact middle of this section, insert this placeholder EXACTLY as written: <img src='INSERT_CONTEXT_IMAGE_4' alt='${pureSubject} modern skyline' class='inline-ai-image' style='width:100%; border-radius:10px; margin: 2rem 0;' />. Output ONLY raw HTML. Do not add any introduction or closing remarks.`;
 
     // --- Section 6: Comprehensive FAQs (~200 words) ---
     const faqsPrompt = `Write ONLY the "Frequently Asked Questions" section for a blog post about "${pureSubject}". Ask and answer exactly 4 complex, thoughtful questions about this topic. This section MUST be between 190 and 220 words. Use <h2> for the section heading, <h3> for each question, and <p> for the answers. Output ONLY raw HTML. Do not add any introduction or closing remarks.`;
@@ -197,12 +197,12 @@ export async function generateBlogPost(topic: string): Promise<InsertBlog> {
       <h2>Core Pillars and Architectural Principles</h2>
       <p>Every successful implementation of ${pureSubject} rests upon several foundational pillars. These range from robust data pipelines to intuitive interface designs that bridge the gap between technical complexity and practical utility.</p>
 
-      <img src="https://images.unsplash.com/photo-placeholder?topic=data-strategy" alt="Strategic Planning" class="rounded-2xl shadow-xl border border-border/50 my-8 w-full max-h-[400px] object-cover">
+      <img src="https://loremflickr.com/1200/600/${encodeURIComponent(pureSubject)},architecture?lock=1" alt="${pureSubject} Principles" class="rounded-2xl shadow-xl border border-border/50 my-8 w-full max-h-[400px] object-cover">
 
       <h2>Looking Ahead: The Future of ${pureSubject}</h2>
       <p>The trajectory of ${pureSubject} is set for exponential growth as we enter the next phase of the digital era. Those who can master the art and science of this field today will be the architects of tomorrow's world.</p>
       
-      <img src="https://images.unsplash.com/photo-placeholder?topic=future-tech" alt="Future Outlook" class="rounded-2xl shadow-xl border border-border/50 my-8 w-full max-h-[400px] object-cover">
+      <img src="https://loremflickr.com/1200/600/${encodeURIComponent(pureSubject)},future?lock=2" alt="${pureSubject} Future" class="rounded-2xl shadow-xl border border-border/50 my-8 w-full max-h-[400px] object-cover">
 
       <h3>Conclusion</h3>
       <p>In conclusion, ${pureSubject} is much more than a buzzword; it is a fundamental requirement for success in the modern age.</p>
@@ -245,9 +245,23 @@ async function resolveContentImages(html: string, blogTopic: string): Promise<st
     const fullTag = match[0];
     const src = match[1];
     
-    // Priority 1: Extract keyword from 'alt' attribute
+    // Priority 1: Extract keyword from 'alt' attribute and clean it
     const altMatch = fullTag.match(/alt=["']([^"']+)["']/i);
     let keyword = altMatch ? altMatch[1] : "";
+    
+    // Clean filler words to get to the core topic
+    if (keyword) {
+      keyword = keyword
+        .replace(/^(a professional visual showing|professional photography of|real-world case study and data visualization of|detailed expert technical strategy and workflow for|futuristic visualization and upcoming trends for)\s+/gi, "")
+        .replace(/\s+(of|related to|for|in action|in practice)$/gi, "")
+        .trim();
+        
+      // Forbidden generic keywords list — if detected, override with blog topic
+      const genericKeywords = ["strategic planning", "innovation", "business", "technology", "success", "growth", "strategy", "planning", "core principles", "fundamentals", "data strategy", "future tech"];
+      if (genericKeywords.includes(keyword.toLowerCase())) {
+        keyword = ""; // Force fallback to blog topic below
+      }
+    }
     
     // Priority 2: Extract from query params for non-placeholder URLs
     if (!keyword || keyword.length < 3) {
@@ -268,11 +282,15 @@ async function resolveContentImages(html: string, blogTopic: string): Promise<st
     }
     
     // Combine blog topic with keyword for better context (max 3 keywords)
-    const contextualKeyword = `business,technology,${keyword.split(' ').slice(0, 2).join(',')}`;
+    // We add the search index to the keyword eventually in the loop below
+    const contextualKeyword = `${blogTopic} ${keyword}`.trim();
     
-    // De-duplicate tasks by target URL
-    if (!tasks.find(t => t.target === src)) {
-        tasks.push({ target: src, keyword: contextualKeyword });
+    // Check for placeholders or generic sources
+    const genericSources = ["photo-placeholder", "images.unsplash.com/photo-", "loremflickr.com"];
+    const isGenericSource = genericSources.some(s => src.includes(s));
+    
+    if (!tasks.find(t => t.target === fullTag) && (src.includes("INSERT_CONTEXT_IMAGE_") || isGenericSource)) {
+        tasks.push({ target: fullTag, keyword: contextualKeyword });
     }
   }
   
@@ -282,30 +300,41 @@ async function resolveContentImages(html: string, blogTopic: string): Promise<st
     const alt = match[1] || "innovation";
     const url = match[2];
     
-    // If it has a URL and it's already a real image, skip unless it's a known broken source
-    if (url && !url.includes("source.unsplash.com") && url.startsWith("http")) continue;
+    // Check if the Markdown image itself is generic
+    const genericTerms = ["strategy", "growth", "business", "innovation", "technology", "office", "placeholder", "unsplash"];
+    const isGeneric = genericTerms.some(t => alt.toLowerCase().includes(t) || (url && url.toLowerCase().includes(t)));
+
+    if (url && !isGeneric && !url.includes("source.unsplash.com") && url.startsWith("http")) continue;
     
-    tasks.push({ target: fullTag, keyword: alt });
+    tasks.push({ target: fullTag, keyword: `${blogTopic} ${alt}`.trim() });
   }
 
   if (tasks.length === 0) return html;
   
+  let photoIndex = 1;
   
   for (const task of tasks.slice(0, 5)) {
     try {
-      const sanitizedKey = task.keyword.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, ',');
+      const searchKeyword = task.keyword;
       
-      const { url } = await generateImageForBlog(sanitizedKey, "content-" + Math.random().toString(36).substring(7));
+      // Pass the incrementing photoIndex to ensure variety from Unsplash
+      const { url } = await generateImageForBlog(searchKeyword, "content-" + photoIndex + "-" + Math.random().toString(36).substring(7));
+      photoIndex++;
       
-      // Use global replacement to catch all occurrences of the same placeholder URL
       const escapedTarget = task.target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const targetRegex = new RegExp(escapedTarget, 'g');
       
-      // If it was a Markdown tag, convert to HTML <img>
       if (task.target.startsWith("![")) {
+         // Markdown tag replacement
          updatedHtml = updatedHtml.replace(targetRegex, `<img src="${url}" alt="${task.keyword}" class="rounded-2xl shadow-xl my-8 w-full border border-border/50 max-h-[500px] object-cover">`);
       } else {
-         updatedHtml = updatedHtml.replace(targetRegex, url);
+        // HTML <img> tag precision src replacement
+        const srcMatch = task.target.match(/src=["']([^"']+)["']/i);
+        if (srcMatch) {
+            const oldUrl = srcMatch[1];
+            // Globally replace the actual src URL within the content
+            updatedHtml = updatedHtml.split(oldUrl).join(url);
+        }
       }
       
       await new Promise(r => setTimeout(r, 300));
@@ -318,54 +347,75 @@ async function resolveContentImages(html: string, blogTopic: string): Promise<st
 }
 
 /**
- * Generates a featured image using a tiered fallback strategy (Free Tiers Only):
- * 1. Unsplash (High-quality, free search)
- * 2. HuggingFace SDXL (AI generated via Stable Diffusion)
- * 3. Static Tech Placeholder (Reliable fallback)
+ * Generates a highly detailed visual description for AI image generators (DALL-E, SDXL)
+ */
+async function generateVisualDescription(topic: string): Promise<string> {
+  const imageSystemPrompt = `You are an expert prompt engineer for photorealistic AI image generation (Midjourney, DALL-E). Your task is to generate one highly detailed, descriptive, and unique prompt based strictly on the provided blog topic.
+  
+Strict Instructions:
+- Do NOT produce generic images (e.g., do not just show a laptop, a generic office, or a person working unless it is the core topic).
+- Focus on unique metaphors and key elements of the topic.
+- For technology topics, focus on the impact or visual representation of the technology (e.g., for Blockchain in Agriculture, show a farmer using a rugged tablet showing decentralized data in a field, not just a server room).
+- Include details about lighting (e.g., volumetric lighting, golden hour), style (photorealistic, cinematic), camera angle (close-up, wide-shot), and atmosphere.
+- Output ONLY the refined image prompt. No explanation.`;
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(`${imageSystemPrompt}\n\nTopic: "${topic}"`);
+    const prompt = result.response.text();
+    return prompt?.trim() || `${topic}, photorealistic, cinematic, highly detailed`;
+  } catch (err) {
+    console.warn(`[AI] Visual Description Generation Failed:`, err);
+    // Fallback to OpenAI if Gemini fails
+    try {
+      const openAIKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+      if (openAIKey) {
+        const openai = new OpenAI({ apiKey: openAIKey.trim() });
+        const response = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: imageSystemPrompt },
+            { role: "user", content: `Topic: "${topic}"` }
+          ],
+          temperature: 0.7,
+        });
+        return response.choices[0]?.message?.content?.trim() || `${topic}, photorealistic, detailed`;
+      }
+    } catch {
+        // Fail through to manual fallback
+    }
+    return `${topic}, photorealistic, cinematic, highly detailed`;
+  }
+}
+
+/**
+ * Generates a featured image using a tiered fallback strategy (Free Tiers Only)
  */
 export async function generateImageForBlog(title: string, slug: string): Promise<{ url: string; provider: string }> {
   
-  let sanitizedTitle = title.replace(/[^\w\s-]/gi, '').substring(0, 50).trim() || "technology";
+  // 1. Generate a Professional High-Quality AI Image Prompt
+  const detailedPrompt = await generateVisualDescription(title);
   
-  // High-Specificity Query Expansion
-  if (sanitizedTitle.length < 15) {
-    sanitizedTitle = `${sanitizedTitle} professional business technology`;
-  }
-  
-  // Brand-Aware Auto-Correction & Relevance Mapper
-  const corrections: Record<string, string> = {
-    "linkdin": "linkedin",
-    "instragram": "instagram",
-    "facbook": "facebook",
-    "social media": "business networking,people,social app"
-  };
-  
-  Object.entries(corrections).forEach(([wrong, right]) => {
-    if (sanitizedTitle.toLowerCase().includes(wrong)) {
-      sanitizedTitle = sanitizedTitle.toLowerCase().replace(wrong, right);
-    }
-  });
-
-  // High-Precision Relevance Injector
-  const indiaHints = ["republic", "army", "independence", "diwali", "holi", "india", "bharat", "soldier"];
-  if (indiaHints.some(hint => sanitizedTitle.toLowerCase().includes(hint)) && !sanitizedTitle.toLowerCase().includes("india")) {
-    sanitizedTitle = `India ${sanitizedTitle}`;
-  }
-
+  const sanitizedTitle = title.replace(/[^\w\s-]/gi, '').substring(0, 50).trim() || "technology";
   const seed = Array.from(slug).reduce((acc, char) => acc + char.charCodeAt(0), 0) % 1000;
-  // Improved LoremFlickr: Added business,technology tags to prevent kitten fallbacks
-  const fallbackUrl = `https://loremflickr.com/1200/600/business,technology,${encodeURIComponent(sanitizedTitle).replace(/%20/g, ',')}?lock=${seed}`;
   
-  // Hard Ultimate Fallback: Professional High-Quality Tech Image (Unsplash direct)
+  const fallbackUrl = `https://loremflickr.com/1200/600/business,technology,${encodeURIComponent(sanitizedTitle).replace(/%20/g, ',')}?lock=${seed}`;
   const ultimateFallback = `https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1200`;
 
-
-  // 1. Unsplash Tier (High Quality)
+  // 1. Unsplash Tier (Primary Driver - Pure Unsplash Strategy)
   try {
     const accessKey = process.env.UNSPLASH_ACCESS_KEY;
     if (accessKey) {
+      // Aggressive Variety Logic: Use a random page between 1 and 20 for search results
+      const pageIndex = Math.floor(Math.random() * 20) + 1;
+
       const response = await axios.get(`https://api.unsplash.com/search/photos`, {
-        params: { query: sanitizedTitle, per_page: 1, orientation: 'landscape' },
+        params: { 
+            query: detailedPrompt.substring(0, 80), 
+            per_page: 1, 
+            page: pageIndex, // Random page forces unique images
+            orientation: 'landscape' 
+        },
         headers: { Authorization: `Client-ID ${accessKey.trim()}` }
       });
 
@@ -374,16 +424,16 @@ export async function generateImageForBlog(title: string, slug: string): Promise
       }
     }
   } catch (err: any) {
-    console.warn(`[Unsplash] Tier Failed: ${err.message}. Moving to Hugging Face...`);
+    console.warn(`[Unsplash] Tier Failed: ${err.message}. Moving to fallbacks...`);
   }
 
-  // 2. Hugging Face Tier (Generated)
+  // 2. Hugging Face Tier (Using the full production-grade prompt)
   try {
     const hfToken = process.env.HUGGINGFACE_TOKEN || process.env.HF_API_KEY;
     if (hfToken) {
       const hfResponse = await axios.post(
-        "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
-        { inputs: `Professional high-quality cinematic photography for ${sanitizedTitle}, wide angle, 8k resolution` },
+        "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5",
+        { inputs: detailedPrompt },
         {
           headers: { Authorization: `Bearer ${hfToken.trim()}` },
           responseType: "arraybuffer",

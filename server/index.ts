@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { registerRoutes } from "./routes";
+import { registerRoutes } from "./routes/index";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { BlogModel, UserModel, ExternalSiteModel } from "./models";

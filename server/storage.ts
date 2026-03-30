@@ -23,7 +23,7 @@ export interface IStorage {
   }>;
 
   // Blogs
-  getBlogs(clientId?: string): Promise<Blog[]>;
+  getBlogs(clientId?: string, isPublished?: boolean): Promise<Blog[]>;
   getBlog(id: number): Promise<Blog | undefined>;
   getBlogBySlug(slug: string): Promise<Blog | undefined>;
   getBlogBySlugAndClientId(slug: string, clientId: string): Promise<Blog | undefined>;
@@ -132,7 +132,7 @@ export class MongoStorage implements IStorage {
     return { totalUsers, totalBlogs, totalPublished, totalDrafts };
   }
 
-  async getBlogs(clientId?: string): Promise<Blog[]> {
+  async getBlogs(clientId?: string, isPublished?: boolean): Promise<Blog[]> {
     try {
       // If clientId is provided, find blogs for that client.
       // If clientId is undefined (Super Admin case), find all blogs.
@@ -141,7 +141,10 @@ export class MongoStorage implements IStorage {
         return [];
       }
       
-      const query = clientId ? { clientId } : {};
+      const query: any = clientId ? { clientId } : {};
+      if (isPublished !== undefined) {
+          query.isPublished = isPublished;
+      }
       const docs = await BlogModel.find(query).sort({ createdAt: -1 });
       return docs.map(doc => {
         const obj = doc.toObject();
@@ -201,7 +204,17 @@ export class MongoStorage implements IStorage {
    * specified clientId AND is published. Prevents cross-tenant slug collisions.
    */
   async getBlogBySlugAndClientId(slug: string, clientId: string): Promise<Blog | undefined> {
-    const doc = await BlogModel.findOne({ slug, clientId, isPublished: true });
+    const now = new Date();
+    // Double-Gate Gate: ONLY Published AND (No Schedule OR Schedule Passed)
+    const doc = await BlogModel.findOne({ 
+      slug, 
+      clientId, 
+      isPublished: true,
+      $or: [
+        { scheduledAt: null },
+        { scheduledAt: { $lte: now } }
+      ]
+    });
     const obj = doc?.toObject();
     return obj ? {
       ...obj,
@@ -518,9 +531,13 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getBlogs(clientId?: string): Promise<Blog[]> {
-    if (clientId) {
-      return await db.select().from(blogs).where(eq(blogs.clientId, clientId)).orderBy(desc(blogs.createdAt));
+  async getBlogs(clientId?: string, isPublished?: boolean): Promise<Blog[]> {
+    const filters = [];
+    if (clientId) filters.push(eq(blogs.clientId, clientId));
+    if (isPublished !== undefined) filters.push(eq(blogs.isPublished, isPublished));
+    
+    if (filters.length > 0) {
+      return await db.select().from(blogs).where(and(...filters)).orderBy(desc(blogs.createdAt));
     }
     return await db.select().from(blogs).orderBy(desc(blogs.createdAt));
   }
@@ -539,8 +556,17 @@ export class DatabaseStorage implements IStorage {
    * Tenant-isolated blog fetch via Drizzle (SQL backend).
    */
   async getBlogBySlugAndClientId(slug: string, clientId: string): Promise<Blog | undefined> {
+    const now = new Date();
     const [blog] = await db.select().from(blogs).where(
-      and(eq(blogs.slug, slug), eq(blogs.clientId, clientId), eq(blogs.isPublished, true))
+      and(
+        eq(blogs.slug, slug), 
+        eq(blogs.clientId, clientId), 
+        eq(blogs.isPublished, true),
+        or(
+          sql`${blogs.scheduledAt} IS NULL`,
+          lte(blogs.scheduledAt, now)
+        )
+      )
     );
     return blog;
   }
@@ -896,11 +922,14 @@ export class MemStorage implements IStorage {
     this.saveToDisk();
   }
 
-  async getBlogs(clientId?: string): Promise<Blog[]> {
+  async getBlogs(clientId?: string, isPublished?: boolean): Promise<Blog[]> {
     this.loadFromDisk();
     let allBlogs = Array.from(this.blogs.values());
     if (clientId) {
       allBlogs = allBlogs.filter(b => b.clientId === clientId);
+    }
+    if (isPublished !== undefined) {
+      allBlogs = allBlogs.filter(b => b.isPublished === isPublished);
     }
     return allBlogs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }

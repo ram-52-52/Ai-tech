@@ -22,14 +22,12 @@ export async function sendWelcomeEmail(to: string, username: string, password: s
       <title>Welcome to AI TECH</title>
       <style>
         body { 
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-          background-color: #fcfcfc; 
+          font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif; 
+          background-color: #f8fafc; 
           margin: 0; 
           padding: 0; 
-          -webkit-font-smoothing: antialiased;
         }
         .wrapper {
-          background-color: #fcfcfc;
           padding: 40px 20px;
         }
         .container { 
@@ -38,106 +36,115 @@ export async function sendWelcomeEmail(to: string, username: string, password: s
           background: #ffffff; 
           border-radius: 32px; 
           overflow: hidden; 
-          border: 1px solid #e5e7eb;
-          box-shadow: 0 20px 50px rgba(0,0,0,0.05); 
+          border: 1px solid #f1f5f9;
+          box-shadow: 0 4px 50px rgba(0,0,0,0.03); 
         }
         .header { 
-          background: #0a0a0a; 
-          padding: 60px 40px; 
-          text-align: center; 
+          background: #0f172a; 
+          padding: 48px 40px; 
+          text-align: left; 
           color: white; 
+        }
+        .logo-box {
+          display: inline-block;
+          width: 44px;
+          height: 44px;
+          background: #f97316;
+          border-radius: 12px;
+          margin-bottom: 24px;
+          line-height: 44px;
+          text-align: center;
+          font-size: 24px;
         }
         .header h1 {
           margin: 0;
-          font-size: 32px;
-          font-weight: 900;
-          letter-spacing: -0.05em;
+          font-size: 28px;
+          font-weight: 800;
+          letter-spacing: -0.04em;
           text-transform: uppercase;
+          color: #ffffff;
         }
         .header p {
-          margin: 12px 0 0 0;
-          font-size: 14px;
-          opacity: 0.6;
-          font-weight: 600;
-          letter-spacing: 0.1em;
+          margin: 8px 0 0 0;
+          font-size: 13px;
+          color: #94a3b8;
+          font-weight: 700;
+          letter-spacing: 0.2em;
           text-transform: uppercase;
         }
         .content { 
           padding: 48px 40px; 
-          line-height: 1.6; 
-          color: #4b5563; 
+          line-height: 1.7; 
+          color: #475569; 
         }
-        .welcome-text {
-          font-size: 20px;
+        .welcome-title {
+          font-size: 22px;
           font-weight: 800;
-          color: #111827;
-          margin-bottom: 16px;
-          letter-spacing: -0.02em;
+          color: #0f172a;
+          margin-bottom: 12px;
+          letter-spacing: -0.01em;
         }
-        .description {
-          font-size: 15px;
-          color: #6b7280;
+        .intro {
+          font-size: 16px;
           margin-bottom: 32px;
         }
-        .credential-container {
-          background: #f9fafb;
+        .card {
+          background: #f8fafc;
           border-radius: 24px;
           padding: 32px;
-          margin-bottom: 32px;
-          border: 1px solid #f3f4f6;
+          margin-bottom: 40px;
+          border: 1px solid #f1f5f9;
         }
-        .credential-row {
+        .card-row {
           margin-bottom: 24px;
         }
-        .credential-row:last-child {
+        .card-row:last-child {
           margin-bottom: 0;
         }
         .label { 
-          font-size: 11px; 
+          font-size: 10px; 
           text-transform: uppercase;
-          letter-spacing: 0.15em;
-          color: #9ca3af; 
+          letter-spacing: 0.2em;
+          color: #94a3b8; 
           margin-bottom: 8px; 
           font-weight: 800;
         }
         .value { 
-          font-family: 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', monospace; 
+          font-family: 'Menlo', 'Monaco', 'Cascadia Code', monospace;
           font-size: 18px; 
-          color: #111827; 
+          color: #0f172a; 
           font-weight: 700; 
-          word-break: break-all;
         }
-        .btn-wrapper {
+        .btn-container {
+          margin: 40px 0;
           text-align: center;
-          margin-top: 16px;
         }
         .button { 
           display: inline-block; 
           background: #f97316; 
-          color: white !important; 
-          padding: 18px 48px; 
-          border-radius: 16px; 
+          color: #ffffff !important; 
+          padding: 20px 56px; 
+          border-radius: 18px; 
           text-decoration: none; 
           font-weight: 800; 
-          font-size: 14px;
+          font-size: 15px;
           text-transform: uppercase;
-          letter-spacing: 0.05em;
-          box-shadow: 0 10px 25px rgba(249, 115, 22, 0.25); 
-          transition: all 0.2s ease;
+          letter-spacing: 0.1em;
+          box-shadow: 0 10px 40px rgba(249, 115, 22, 0.35); 
         }
-        .security-note {
-          margin-top: 40px;
+        .security {
           font-size: 12px;
-          color: #9ca3af;
+          color: #94a3b8;
           text-align: center;
+          margin-top: 48px;
         }
         .footer { 
-          padding: 32px; 
+          padding: 40px; 
           text-align: center; 
-          font-size: 11px; 
-          color: #9ca3af; 
-          background: #f9fafb;
-          border-top: 1px solid #f3f4f6;
+          font-size: 12px; 
+          color: #94a3b8; 
+          background: #ffffff;
+          border-top: 1px solid #f1f5f9;
         }
       </style>
     </head>
@@ -145,40 +152,38 @@ export async function sendWelcomeEmail(to: string, username: string, password: s
       <div class="wrapper">
         <div class="container">
           <div class="header">
-            <div style="display: inline-block; width: 48px; height: 48px; background: #f97316; border-radius: 12px; margin-bottom: 20px; line-height: 48px;">
-              <span style="color: white; font-size: 24px; font-weight: 900;">⚡</span>
-            </div>
+            <div class="logo-box">🚀</div>
             <h1>AI TECH</h1>
             <p>Content Automation</p>
           </div>
           <div class="content">
-            <div class="welcome-text">Success! Your workspace is ready.</div>
-            <div class="description">
-              Hello ${username}, your premium AI content workspace has been provisioned. You can now start automating your blog production across all platforms.
-            </div>
+            <div class="welcome-title">Success! Workspace Provisioned.</div>
+            <p class="intro">
+              Hello <strong>${username}</strong>, your premium AI workspace is live. You now have full access to our multi-platform blogging and trend analysis engine.
+            </p>
             
-            <div class="credential-container">
-              <div class="credential-row">
-                <div class="label">Username</div>
+            <div class="card">
+              <div class="card-row">
+                <div class="label">Access ID</div>
                 <div class="value">${username}</div>
               </div>
-              <div class="credential-row">
-                <div class="label">Temporary Password</div>
+              <div class="card-row">
+                <div class="label">Primary Password</div>
                 <div class="value">${password}</div>
               </div>
             </div>
  
-            <div class="btn-wrapper">
-              <a href="${loginUrl}" class="button">Access Dashboard</a>
+            <div class="btn-container">
+              <a href="${loginUrl}" class="button">Access Platform</a>
             </div>
  
-            <p class="security-note">
-              Please change your password immediately after your first sign-in for security.
+            <p class="security">
+              For your safety, please update your temporary password immediately upon log in.
             </p>
           </div>
           <div class="footer">
-            &copy; ${new Date().getFullYear()} AI TECH • Professional Content Automation<br>
-            Managed B2B SaaS Solution
+            &copy; ${new Date().getFullYear()} AI-TECH • Automated B2B Content Engine<br>
+            Managed Enterprise Solution
           </div>
         </div>
       </div>
@@ -189,7 +194,7 @@ export async function sendWelcomeEmail(to: string, username: string, password: s
   await transporter.sendMail({
     from: `"AI TECH Support" <${process.env.EMAIL_USER}>`,
     to,
-    subject: "Your AI TECH Workspace is Ready",
+    subject: "⚡ Your AI TECH Workspace is Ready",
     html,
   });
 }
@@ -201,28 +206,55 @@ export async function sendContactNotification(name: string, email: string, messa
     <!DOCTYPE html>
     <html>
     <head>
+      <meta charset="utf-8">
       <style>
-        body { font-family: sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; }
-        .header { background: #f97316; color: white; padding: 10px 20px; border-radius: 5px; margin-bottom: 20px; }
-        .field { margin-bottom: 10px; }
-        .label { font-weight: bold; color: #666; }
+        body { 
+          font-family: 'Inter', system-ui, sans-serif; 
+          background: #ffffff; 
+          color: #1e293b; 
+          margin: 0; 
+          padding: 20px; 
+        }
+        .container { 
+          max-width: 600px; 
+          margin: auto; 
+          border: 1px solid #f1f5f9; 
+          border-radius: 24px; 
+          overflow: hidden;
+          box-shadow: 0 4px 30px rgba(0,0,0,0.02);
+        }
+        .header { 
+          background: #f97316; 
+          padding: 32px; 
+          color: white; 
+        }
+        .header h2 { margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; }
+        .body { padding: 40px; }
+        .entry { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid #f1f5f9; }
+        .entry:last-child { border: 0; margin: 0; padding: 0; }
+        .label { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.15em; margin-bottom: 8px; display: block; }
+        .value { font-size: 16px; font-weight: 600; color: #1e293b; }
+        .message-box { background: #f8fafc; padding: 24px; border-radius: 16px; font-size: 15px; color: #334155; line-height: 1.6; font-style: italic; border-left: 4px solid #f97316; }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <h2>New Contact Inquiry</h2>
+          <h2>NEW PLATFORM INQUIRY</h2>
         </div>
-        <div class="field">
-          <span class="label">Name:</span> ${name}
-        </div>
-        <div class="field">
-          <span class="label">Email:</span> ${email}
-        </div>
-        <div class="field">
-          <span class="label">Message:</span>
-          <p>${message}</p>
+        <div class="body">
+          <div class="entry">
+            <span class="label">SENDER</span>
+            <div class="value">${name}</div>
+          </div>
+          <div class="entry">
+            <span class="label">EMAIL ADDRESS</span>
+            <div class="value">${email}</div>
+          </div>
+          <div class="entry">
+            <span class="label">MESSAGE CONTENT</span>
+            <div class="message-box">"${message}"</div>
+          </div>
         </div>
       </div>
     </body>
@@ -230,10 +262,10 @@ export async function sendContactNotification(name: string, email: string, messa
   `;
 
   await transporter.sendMail({
-    from: `"AI TECH Contact" <${process.env.EMAIL_USER}>`,
+    from: `"AI TECH Notifications" <${process.env.EMAIL_USER}>`,
     to: adminEmail,
     replyTo: email,
-    subject: `New Inquiry from ${name}`,
+    subject: `📩 Contact: ${name} via AI TECH`,
     html,
   });
 }

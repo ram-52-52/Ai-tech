@@ -401,7 +401,7 @@ export default function Settings() {
                                     className="h-10 px-6 rounded-xl font-bold text-xs md:text-sm tracking-tight text-orange-500 hover:bg-orange-500/10 transition-all"
                                     onClick={() => {
                                       const sid = site.id;
-                                      const code = `<div id="ai-tech-blog-feed" data-site-id="${sid}"></div>\n<script src="https://ai-tech-5l4y.onrender.com/blog-widget.js"></script>`;
+                                      const code = `<div id="ai-tech-blog-feed" data-site-id="${sid}"></div>\n<script src="${window.location.origin}/blog-widget.js"></script>`;
                                       navigator.clipboard.writeText(code);
                                       toast({ title: "Copied", description: "Integration snippet copied to clipboard." });
                                     }}
@@ -412,7 +412,7 @@ export default function Settings() {
                                 <div className="p-8 overflow-x-auto">
                                   <pre className="font-mono text-xs leading-loose text-orange-500/80 whitespace-pre">
                                     {`<div id="ai-tech-blog-feed" data-site-id="${site.id}"></div>
-<script src="https://ai-tech-5l4y.onrender.com/blog-widget.js"></script>`}
+<script src="${window.location.origin}/blog-widget.js"></script>`}
                                   </pre>
                                 </div>
                               </div>

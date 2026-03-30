@@ -11,9 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  ChevronLeft, Save, Trash2, Eye, Globe, CalendarClock, Clock, 
-  CheckCircle2, X, RefreshCw, Sparkles, Wand2, Type, 
+import {
+  ChevronLeft, Save, Trash2, Eye, Globe, CalendarClock, Clock,
+  CheckCircle2, X, RefreshCw, Sparkles, Wand2, Type,
   Image as ImageIcon, Hash, Tags
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -90,8 +90,6 @@ export default function EditBlog() {
     }
   }, [blog, reset]);
 
-  // Removed redundant image rescue effect to trust backend-resolved URLs
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -158,6 +156,26 @@ export default function EditBlog() {
     );
   };
 
+  const handlePublishImmediately = () => {
+    const now = new Date();
+    update({
+      id,
+      isPublished: true,
+      publishedAt: now,
+      scheduledAt: now, // Bypasses future-date check in feed API logic
+    }, {
+      onSuccess: () => {
+        setValue("isPublished", true, { shouldDirty: false });
+        queryClient.invalidateQueries({ queryKey: [api.blogs.list.path] });
+        queryClient.invalidateQueries({ queryKey: [api.blogs.get.path, id] });
+        toast({ title: "Instant Published", description: "Post is now live and synchronized across platforms!" });
+      },
+      onError: () => {
+        toast({ title: "Publish failed", description: "Could not publish immediately.", variant: "destructive" });
+      }
+    });
+  };
+
   const handleRegenerateImageClick = async () => {
     if (!currentTitle) return;
     setIsRegenerating(true);
@@ -188,9 +206,9 @@ export default function EditBlog() {
       queryClient.invalidateQueries({ queryKey: [api.blogs.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.blogs.get.path, id] });
 
-      toast({ 
-        title: "Portfolio Refreshed", 
-        description: "Full content and high-density visuals have been synchronized." 
+      toast({
+        title: "Portfolio Refreshed",
+        description: "Full content and high-density visuals have been synchronized."
       });
     } else {
       toast({ title: "Regeneration Failed", description: res.error || "OpenAI quota reached or network error.", variant: "destructive" });
@@ -239,7 +257,7 @@ export default function EditBlog() {
               </AlertDialogHeader>
               <AlertDialogFooter className="pt-6 gap-3">
                 <AlertDialogCancel className="rounded-xl h-11 px-6 text-sm md:text-base font-bold tracking-tight bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 border-none text-neutral-900 dark:text-white">Cancel</AlertDialogCancel>
-                <AlertDialogAction 
+                <AlertDialogAction
                   onClick={handleDelete}
                   className="bg-red-500 hover:bg-red-600 text-white rounded-xl h-11 px-6 text-sm md:text-base font-bold tracking-tight shadow-lg shadow-red-500/20"
                 >
@@ -248,9 +266,9 @@ export default function EditBlog() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <Button 
-            onClick={handleSubmit(onSubmit)} 
-            disabled={isSaving} 
+          <Button
+            onClick={handleSubmit(onSubmit)}
+            disabled={isSaving}
             className="flex-1 sm:flex-none h-11 px-8 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm md:text-base font-bold tracking-tight shadow-lg shadow-orange-500/20 transition-all border-none"
           >
             {isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2" /> Save Changes</>}
@@ -265,13 +283,13 @@ export default function EditBlog() {
             <div className="space-y-3 focus-within:translate-x-1 transition-transform px-1 md:px-0">
               <Label htmlFor="title" className="text-xs md:text-sm font-semibold text-neutral-900 dark:text-white px-1 tracking-tight">Post Title</Label>
               <div className="flex flex-col md:flex-row items-stretch gap-3">
-                <Input 
+                <Input
                   id="title"
                   {...register("title")}
                   className="h-14 text-lg font-bold bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-800 focus-visible:ring-orange-500/20 transition-all rounded-xl px-5"
                   placeholder="Enter a compelling title..."
                 />
-                <Button 
+                <Button
                   onClick={handleRegenerateFullClick}
                   disabled={isRegeneratingFull || !currentTitle}
                   className="h-14 px-6 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-all shrink-0"
@@ -289,19 +307,19 @@ export default function EditBlog() {
             <div className="space-y-3 relative">
               <div className="flex items-center justify-between px-1">
                 <Label htmlFor="content" className="text-xs md:text-sm font-semibold text-neutral-900 dark:text-white tracking-tight">Blog Content</Label>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setShowPreview(!showPreview)}
                   className={`text-xs md:text-sm tracking-tight font-bold h-8 px-4 rounded-lg gap-2 transition-all ${showPreview ? "bg-orange-500 text-white" : "text-neutral-500 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200"}`}
                 >
                   {showPreview ? <><Type className="w-3.5 h-3.5" /> Editor</> : <><Eye className="w-3.5 h-3.5" /> Preview</>}
                 </Button>
               </div>
-              
+
               <div className="relative group px-1 md:px-0">
                 {!showPreview ? (
-                  <Textarea 
+                  <Textarea
                     id="content"
                     {...register("content")}
                     className="min-h-[400px] md:min-h-[600px] text-sm md:text-base leading-relaxed p-5 md:p-6 bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-800 focus-visible:ring-orange-500/20 transition-all rounded-2xl resize-none shadow-inner"
@@ -309,15 +327,15 @@ export default function EditBlog() {
                   />
                 ) : (
                   <div className="min-h-[400px] md:min-h-[600px] p-5 md:p-8 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-auto prose prose-neutral dark:prose-invert prose-orange max-w-none shadow-sm">
-                    <div 
+                    <div
                       className="blog-preview-content text-sm md:text-base"
-                      dangerouslySetInnerHTML={{ 
+                      dangerouslySetInnerHTML={{
                         __html: (watch("content") || "")
-                      }} 
+                      }}
                     />
                   </div>
                 )}
-                
+
                 {isRegeneratingFull && (
                   <div className="absolute inset-0 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-40 transition-all duration-300">
                     <div className="flex flex-col items-center gap-6 text-center max-w-sm px-6">
@@ -345,12 +363,12 @@ export default function EditBlog() {
               <ImageIcon className="w-4 h-4 text-orange-500" />
               Featured Image
             </h3>
-            
+
             <div className="aspect-video rounded-2xl bg-neutral-100 dark:bg-neutral-950 overflow-hidden border border-neutral-200 dark:border-white/10 relative group">
               {currentImageUrl ? (
-                <img 
+                <img
                   src={currentImageUrl}
-                  alt={currentTitle} 
+                  alt={currentTitle}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               ) : (
@@ -358,7 +376,7 @@ export default function EditBlog() {
                   <ImageIcon className="w-12 h-12" />
                 </div>
               )}
-              
+
               {(isRegenerating || isRegeneratingFull) && (
                 <div className="absolute inset-0 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center z-10">
                   <RefreshCw className="w-8 h-8 text-orange-500 animate-spin" />
@@ -366,8 +384,8 @@ export default function EditBlog() {
               )}
             </div>
 
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleRegenerateImageClick}
               disabled={isRegenerating || isRegeneratingFull || !currentTitle}
               className="w-full h-11 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border-neutral-200 dark:border-neutral-800 rounded-xl text-xs md:text-sm font-bold tracking-tight transition-colors shadow-sm text-neutral-900 dark:text-white"
@@ -383,14 +401,14 @@ export default function EditBlog() {
               <Globe className="w-4 h-4 text-orange-500" />
               Post Settings
             </h3>
-            
+
             <div className="space-y-6">
               <div className="flex items-center justify-between p-4 bg-orange-500/5 dark:bg-orange-500/10 rounded-2xl border border-orange-500/10">
                 <div className="space-y-0.5">
                   <Label className="text-xs md:text-sm font-semibold text-neutral-900 dark:text-white tracking-tight">Publish Visibility</Label>
                   <p className="text-xs md:text-sm text-neutral-500 dark:text-neutral-400 font-semibold tracking-tight">Visible to your audience</p>
                 </div>
-                <Switch 
+                <Switch
                   checked={watch("isPublished")}
                   onCheckedChange={(checked) => setValue("isPublished", checked, { shouldDirty: true })}
                   className="data-[state=checked]:bg-orange-500"
@@ -402,9 +420,9 @@ export default function EditBlog() {
                   <Hash className="w-3.5 h-3.5 text-orange-500" />
                   Primary Topic
                 </Label>
-                <Input 
-                  {...register("topic")} 
-                  placeholder="e.g. Technology" 
+                <Input
+                  {...register("topic")}
+                  placeholder="e.g. Technology"
                   className="bg-neutral-50 dark:bg-neutral-800 h-11 text-sm md:text-base rounded-xl border-neutral-200 dark:border-neutral-800 px-4 font-semibold text-neutral-900 dark:text-white"
                 />
               </div>
@@ -414,24 +432,43 @@ export default function EditBlog() {
                   <Tags className="w-3.5 h-3.5 text-orange-500" />
                   Keywords
                 </Label>
-                <Input 
-                  {...register("tags")} 
-                  placeholder="AI, Innovation, SaaS" 
+                <Input
+                  {...register("tags")}
+                  placeholder="AI, Innovation, SaaS"
                   className="bg-neutral-50 dark:bg-neutral-800 h-11 text-sm md:text-base rounded-xl border-neutral-200 dark:border-neutral-800 px-4 font-semibold text-neutral-900 dark:text-white"
                 />
               </div>
 
               <div className="space-y-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
                 <div className="space-y-4">
-                  <Label className="text-xs md:text-sm font-semibold text-neutral-500 px-1 tracking-tight">Publisher Schedule</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Label className="text-xs md:text-sm font-semibold text-neutral-500 px-1 tracking-tight">Publisher Control</Label>
+                  
+                  <Button
+                    onClick={handlePublishImmediately}
+                    disabled={isSaving}
+                    className="w-full h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm md:text-base tracking-tight shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5 border-none"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+                    Publish Immediately
+                  </Button>
+
+                  <div className="relative py-4">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-neutral-100 dark:border-neutral-800" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white dark:bg-neutral-900 px-2 text-neutral-400 font-bold tracking-widest px-4">OR SCHEDULE</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
                       <p className="text-xs md:text-sm font-semibold text-neutral-400 tracking-tight px-1">Destination</p>
                       <Select
                         value={scheduleForm.siteId}
                         onValueChange={(val) => setScheduleForm(prev => ({ ...prev, siteId: val }))}
                       >
-                         <SelectTrigger className="bg-neutral-50 dark:bg-neutral-800 h-11 rounded-xl border-neutral-200 dark:border-neutral-800 px-4 text-xs md:text-sm font-semibold tracking-tight">
+                        <SelectTrigger className="bg-neutral-50 dark:bg-neutral-800 h-11 rounded-xl border-neutral-200 dark:border-neutral-800 px-4 text-xs md:text-sm font-semibold tracking-tight w-full">
                           <SelectValue placeholder="Select..." />
                         </SelectTrigger>
                         <SelectContent className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 rounded-xl">
@@ -450,13 +487,13 @@ export default function EditBlog() {
                         type="datetime-local"
                         value={scheduleForm.scheduledAt}
                         onChange={(e) => setScheduleForm(prev => ({ ...prev, scheduledAt: e.target.value }))}
-                        className="bg-neutral-50 dark:bg-neutral-800 h-11 rounded-xl border-neutral-200 dark:border-neutral-800 px-4 text-sm md:text-base font-semibold text-neutral-900 dark:text-white"
+                        className="bg-neutral-50 dark:bg-neutral-800 h-11 rounded-xl border-neutral-200 dark:border-neutral-800 px-3 text-sm md:text-base font-semibold text-neutral-900 dark:text-white w-full"
                         min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
                       />
                     </div>
                   </div>
 
-                   <Button
+                  <Button
                     onClick={handleSchedule}
                     disabled={isScheduling}
                     className="w-full h-12 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold text-sm md:text-base tracking-tight shadow-lg shadow-black/10 transition-all hover:-translate-y-0.5"
