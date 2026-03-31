@@ -83,7 +83,7 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
         {isStatsLoading ? (
           Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-40 rounded-[2rem] bg-neutral-100 dark:bg-white/5" />)
         ) : (

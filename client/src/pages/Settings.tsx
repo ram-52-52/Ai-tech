@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useSites, useCreateSite, useUpdateSite, useDeleteSite, useScheduledPosts, useCreateScheduledPost, useDeleteScheduledPost } from "@/hooks/use-sites";
 import { useBlogs } from "@/hooks/use-blogs";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Calendar, Link as LinkIcon, CheckCircle2, Clock, Plug, Pencil, X, AlertTriangle, Loader2, ShieldAlert } from "lucide-react";
+import { Plus, Trash2, Calendar, Link as LinkIcon, CheckCircle2, Clock, Plug, Pencil, X, AlertTriangle, Loader2, ShieldAlert, Zap, CalendarClock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
@@ -128,17 +139,21 @@ export default function Settings() {
       toast({ title: "Error", description: "Please select blog, site, and schedule time", variant: "destructive" });
       return;
     }
-
+    const scheduledDate = new Date(scheduleForm.scheduledAt);
+    if (scheduledDate <= new Date()) {
+      toast({ title: "Invalid time", description: "Scheduled time must be in the future.", variant: "destructive" });
+      return;
+    }
     createScheduled(
       {
         blogId: Number(scheduleForm.blogId),
         siteId: Number(scheduleForm.siteId),
-        scheduledAt: new Date(scheduleForm.scheduledAt),
+        scheduledAt: scheduledDate,
       },
       {
         onSuccess: () => {
           setScheduleForm({ blogId: "", siteId: "", scheduledAt: "" });
-          toast({ title: "Success", description: "Post scheduled successfully" });
+          toast({ title: "Scheduled!", description: "Your post will be automatically published at the selected time." });
         },
         onError: () => {
           toast({ title: "Error", description: "Failed to schedule post", variant: "destructive" });
@@ -147,12 +162,41 @@ export default function Settings() {
     );
   };
 
+  const handlePublishNow = () => {
+    if (!scheduleForm.blogId || !scheduleForm.siteId) {
+      toast({ title: "Error", description: "Please select a blog and a target platform first.", variant: "destructive" });
+      return;
+    }
+    createScheduled(
+      {
+        blogId: Number(scheduleForm.blogId),
+        siteId: Number(scheduleForm.siteId),
+        scheduledAt: new Date(),
+      },
+      {
+        onSuccess: () => {
+          setScheduleForm({ blogId: "", siteId: "", scheduledAt: "" });
+          toast({ title: "Publishing Now!", description: "Your post has been queued for immediate publishing." });
+        },
+        onError: () => {
+          toast({ title: "Error", description: "Failed to publish immediately.", variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  const getPublishMethod = (post: { scheduledAt: Date | string; createdAt: Date | string }) => {
+    const scheduled = new Date(post.scheduledAt).getTime();
+    const created = new Date(post.createdAt).getTime();
+    return Math.abs(scheduled - created) < 3 * 60 * 1000;
+  };
+
   if (sitesLoading || blogsLoading || scheduledLoading) {
     return (
       <div className="space-y-8 animate-in fade-in duration-700">
         <SEO title="Settings" />
         <Skeleton className="h-20 w-3/4 rounded-3xl" />
-        <div className="premium-card rounded-[2.5rem] p-8 space-y-6">
+        <div className="premium-card rounded-[2rem] md:rounded-[2.5rem] p-4 sm:p-8 space-y-6">
           <Skeleton className="h-8 w-48" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Skeleton className="h-12 rounded-xl" />
@@ -177,7 +221,7 @@ export default function Settings() {
       />
 
       {/* Header Module */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 p-10 bg-white dark:bg-neutral-900 rounded-[3rem] border border-neutral-200 dark:border-neutral-800 shadow-xl relative overflow-hidden group transition-all">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 p-6 md:p-10 bg-white dark:bg-neutral-900 rounded-[2.5rem] md:rounded-[3rem] border border-neutral-200 dark:border-neutral-800 shadow-xl relative overflow-hidden group transition-all">
         <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full pointer-events-none" />
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-xs md:text-sm font-semibold tracking-wide mb-4">
@@ -194,7 +238,7 @@ export default function Settings() {
 
       <div className="space-y-12">
         {/* External Sites Section */}
-        <div className="premium-card p-10 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[3rem] shadow-xl space-y-10">
+        <div className="premium-card p-4 sm:p-6 md:p-10 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[2.5rem] md:rounded-[3rem] shadow-xl space-y-10">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500 shadow-lg shadow-orange-500/5">
               <LinkIcon className="w-6 h-6" />
@@ -212,14 +256,14 @@ export default function Settings() {
                 placeholder="e.g. Corporate Blog"
                 value={siteForm.siteName}
                 onChange={(e) => setSiteForm({ ...siteForm, siteName: e.target.value })}
-                className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-sm md:text-base px-6 focus:ring-orange-500/20 transition-all text-neutral-900 dark:text-white"
+                className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-xs md:text-base px-4 md:px-6 focus:ring-orange-500/20 transition-all text-neutral-900 dark:text-white"
               />
             </div>
 
             <div className="space-y-3">
               <Label className="text-xs md:text-sm font-semibold tracking-wide text-neutral-500 dark:text-neutral-400 ml-1">Integration Type</Label>
               <Select value={siteForm.siteType} onValueChange={(val) => setSiteForm({ ...siteForm, siteType: val })}>
-                <SelectTrigger className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-sm md:text-base px-6 focus:ring-0 focus:border-orange-500/20 transition-all text-neutral-900 dark:text-white">
+                <SelectTrigger className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-xs md:text-base px-4 md:px-6 focus:ring-0 focus:border-orange-500/20 transition-all text-neutral-900 dark:text-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 rounded-2xl">
@@ -234,7 +278,7 @@ export default function Settings() {
             </div>
 
             {siteForm.siteType === "wordpress" ? (
-              <div className="col-span-1 md:col-span-2 relative overflow-hidden bg-orange-500/5 border border-orange-500/10 rounded-3xl p-10 text-center space-y-6">
+              <div className="col-span-1 md:col-span-2 relative overflow-hidden bg-orange-500/5 border border-orange-500/10 rounded-3xl p-6 md:p-10 text-center space-y-6">
                 <div className="absolute -top-24 -right-24 w-48 h-48 rounded-full pointer-events-none" />
                 <h3 className="text-xl md:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">WordPress Direct Link</h3>
                 <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400 max-w-md mx-auto leading-relaxed tracking-tight">
@@ -247,7 +291,7 @@ export default function Settings() {
                     const authUrl = `https://public-api.wordpress.com/oauth2/authorize?client_id=${WP_CLIENT_ID}&redirect_uri=${encodeURIComponent(WP_REDIRECT_URI)}&response_type=code`;
                     window.location.href = authUrl;
                   }}
-                  className="h-14 px-12 bg-orange-500 hover:bg-orange-600 rounded-2xl font-bold text-sm md:text-base tracking-tight transition-all duration-500 shadow-lg shadow-orange-500/20 group hover:-translate-y-1 text-white border border-orange-400/20"
+                  className="h-14 w-full md:w-auto px-6 md:px-12 bg-orange-500 hover:bg-orange-600 rounded-2xl font-bold text-xs md:text-base tracking-tight transition-all duration-500 shadow-lg shadow-orange-500/20 group hover:-translate-y-1 text-white border border-orange-400/20"
                 >
                   <svg className="w-5 h-5 mr-3 group-hover:rotate-12 transition-transform" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12.158 12.786l-2.698 7.84c.806.236 1.657.365 2.54.365 1.047 0 2.05-.18 2.986-.51-.024-.037-.046-.078-.065-.123l-2.763-8.082V12.786M4.545 15.698c0-1.875.568-3.078 1.137-4.102.568-.91.966-1.536.966-2.5 0-1.138-.853-2.162-2.046-2.162h-.057A9.855 9.855 0 0 0 2.05 12c0 2.628 1.026 5.016 2.69 6.786l2.083-6.046c-.225-.453-.45-.984-.45-1.54M17.02 10.648c0 1.48-.342 2.787-.796 3.98l-3.23 9.096A9.97 9.97 0 0 0 21.95 12c0-4.11-2.484-7.644-6.096-9.15.568 1.08.91 2.33.91 3.58.002.855-.17 1.706-.512 2.484.455.454.767 1.08.767 1.734m-4.862-8.52A9.957 9.957 0 0 0 12 2C6.48 2 2 6.48 2 12c0 .285.013.565.035.845.82-.46 2.088-1.597 2.088-1.597.23-.17.172-.51-.113-.51h-.967c1.196-4.557 5.35-7.97 10.32-7.97 1.63 0 3.176.388 4.544 1.077l-1.65 4.383-4.1-3.628z" />
@@ -263,7 +307,7 @@ export default function Settings() {
                     placeholder={siteForm.siteType === "embed_widget" ? "https://your-domain.com" : "https://your-blog.com"}
                     value={siteForm.siteUrl}
                     onChange={(e) => setSiteForm({ ...siteForm, siteUrl: e.target.value })}
-                    className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-sm md:text-base px-6 focus:ring-orange-500/20 transition-all text-neutral-900 dark:text-white"
+                    className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-xs md:text-base px-4 md:px-6 focus:ring-orange-500/20 transition-all text-neutral-900 dark:text-white"
                   />
                 </div>
 
@@ -275,7 +319,7 @@ export default function Settings() {
                         placeholder="admin@yourdomain.com"
                         value={siteForm.username}
                         onChange={(e) => setSiteForm({ ...siteForm, username: e.target.value })}
-                        className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-sm md:text-base px-6 focus:ring-orange-500/20 transition-all text-neutral-900 dark:text-white"
+                        className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-xs md:text-base px-4 md:px-6 focus:ring-orange-500/20 transition-all text-neutral-900 dark:text-white"
                       />
                     </div>
 
@@ -286,7 +330,7 @@ export default function Settings() {
                         placeholder="••••••••••••"
                         value={siteForm.password}
                         onChange={(e) => setSiteForm({ ...siteForm, password: e.target.value })}
-                        className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-sm md:text-base px-6 focus:ring-orange-500/20 transition-all text-neutral-900 dark:text-white"
+                        className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-xs md:text-base px-4 md:px-6 focus:ring-orange-500/20 transition-all text-neutral-900 dark:text-white"
                       />
                     </div>
                   </>
@@ -322,31 +366,31 @@ export default function Settings() {
             <div className="space-y-3">
               {sites?.map((site) => (
                 <div key={site.id} className="group bg-neutral-50 dark:bg-white/[0.02] hover:bg-neutral-100 dark:hover:bg-white/[0.04] rounded-[2rem] border border-neutral-200 dark:border-white/5 transition-all duration-500 overflow-hidden">
-                  <div className="p-8 flex items-center justify-between flex-wrap gap-6">
-                    <div className="flex items-center gap-5">
-                      <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center font-bold text-orange-500 text-xs transition-transform group-hover:scale-105">
+                  <div className="p-4 md:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-3 md:gap-5 w-full sm:w-auto">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-orange-500/10 flex items-center justify-center font-bold text-orange-500 text-[10px] md:text-xs transition-transform group-hover:scale-105 flex-shrink-0">
                         {site.siteType.substring(0, 2).toUpperCase()}
                       </div>
-                      <div>
-                        <p className="font-bold text-lg text-neutral-900 dark:text-white tracking-tight group-hover:text-orange-500 transition-colors">{site.siteName}</p>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-xs md:text-sm text-neutral-500 dark:text-neutral-400 font-semibold tracking-tight">{site.siteUrl}</span>
-                          <span className="w-1 h-1 rounded-full bg-neutral-300 dark:bg-white/10" />
-                          <span className={`text-xs md:text-sm font-bold tracking-wide ${site.isEnabled ? 'text-orange-500' : 'text-neutral-300 dark:text-neutral-700'}`}>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-sm md:text-lg text-neutral-900 dark:text-white tracking-tight group-hover:text-orange-500 transition-colors truncate">{site.siteName}</p>
+                        <div className="flex items-center gap-2 md:gap-3 mt-0.5">
+                          <span className="text-[10px] md:text-sm text-neutral-500 dark:text-neutral-400 font-semibold tracking-tight truncate max-w-[100px] md:max-w-none">{site.siteUrl}</span>
+                          <span className="w-1 h-1 rounded-full bg-neutral-300 dark:bg-white/10 flex-shrink-0" />
+                          <span className={`text-[10px] md:text-sm font-bold tracking-wide flex-shrink-0 ${site.isEnabled ? 'text-orange-500' : 'text-neutral-300 dark:text-neutral-700'}`}>
                             {site.isEnabled ? 'Active' : 'Offline'}
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center flex-wrap gap-2 md:gap-3 w-full sm:w-auto justify-end">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => editingSiteId === site.id ? setEditingSiteId(null) : startEditing(site)}
-                        className="h-10 px-6 rounded-xl border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold text-sm md:text-base tracking-tight transition-all shadow-sm text-neutral-900 dark:text-white"
+                        className="h-10 px-4 md:px-6 rounded-xl border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold text-[10px] md:text-sm tracking-tight transition-all shadow-sm text-neutral-900 dark:text-white flex-1 sm:flex-none"
                       >
-                        {editingSiteId === site.id ? <X className="w-3.5 h-3.5 mr-2" /> : <Pencil className="w-3.5 h-3.5 mr-2" />}
-                        {editingSiteId === site.id ? "Cancel" : "Edit Config"}
+                        {editingSiteId === site.id ? <X className="w-3.5 h-3.5 mr-1" /> : <Pencil className="w-3.5 h-3.5 mr-1" />}
+                        {editingSiteId === site.id ? "Cancel" : "Config"}
                       </Button>
                       {(site.siteType === "medium" || site.siteType === "wordpress" || site.siteType === "ghost" || site.siteType === "linkedin") && (
                         <Button
@@ -420,15 +464,39 @@ export default function Settings() {
                           </DialogContent>
                         </Dialog>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteSite(site.id)}
-                        disabled={isDeletingSite}
-                        className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-md"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={isDeletingSite}
+                            className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-md flex-shrink-0"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="w-[95vw] max-w-md bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[2rem] p-6 md:p-8 shadow-2xl">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-xl font-bold text-neutral-900 dark:text-white tracking-tight">
+                              Disconnect Platform?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 font-medium">
+                              Are you sure you want to remove <span className="text-orange-500 font-bold">{site.siteName}</span>? All scheduled posts for this platform will also be cancelled.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="pt-6 gap-3">
+                            <AlertDialogCancel className="rounded-xl h-11 px-6 text-sm font-bold bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 border-none text-neutral-900 dark:text-white">
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteSite(site.id)}
+                              className="bg-red-500 hover:bg-red-600 text-white rounded-xl h-11 px-6 text-sm font-bold shadow-lg shadow-red-500/20 border-none"
+                            >
+                              Disconnect
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
 
@@ -484,7 +552,7 @@ export default function Settings() {
         </div>
 
         {/* Schedule Posts Section */}
-        <div className="premium-card p-10 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[3rem] shadow-xl space-y-10">
+        <div className="premium-card p-4 sm:p-6 md:p-10 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[2.5rem] md:rounded-[3rem] shadow-xl space-y-10">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500 shadow-lg shadow-orange-500/5">
               <Calendar className="w-6 h-6" />
@@ -500,11 +568,11 @@ export default function Settings() {
                <p className="text-xs md:text-sm font-semibold tracking-wide text-neutral-400">Connect a platform above to begin scheduling posts.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 xl:gap-8">
               <div className="space-y-3">
                  <Label className="text-xs md:text-sm font-semibold tracking-wide text-neutral-500 dark:text-neutral-400 ml-1">Select Article</Label>
                 <Select value={scheduleForm.blogId} onValueChange={(val) => setScheduleForm({ ...scheduleForm, blogId: val })}>
-                <SelectTrigger className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-sm md:text-base px-6 focus:ring-0 focus:border-orange-500/20 transition-all text-neutral-900 dark:text-white">
+                <SelectTrigger className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-xs md:text-base px-4 md:px-6 focus:ring-0 focus:border-orange-500/20 transition-all text-neutral-900 dark:text-white">
                     <SelectValue placeholder="Choose Blog Post..." />
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 rounded-2xl">
@@ -539,61 +607,119 @@ export default function Settings() {
                   type="datetime-local"
                   value={scheduleForm.scheduledAt}
                   onChange={(e) => setScheduleForm({ ...scheduleForm, scheduledAt: e.target.value })}
-                  className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-sm md:text-base px-6 focus:ring-orange-500/20 transition-all text-neutral-900 dark:text-white"
+                  className="rounded-2xl h-14 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 font-semibold text-xs md:text-base px-4 md:px-6 focus:ring-orange-500/20 transition-all text-neutral-900 dark:text-white"
                 />
               </div>
             </div>
           )}
 
           {sites && sites?.length > 0 && (
-            <Button
-              onClick={handleSchedulePost}
-              disabled={isCreatingScheduled}
-              className="w-full h-16 bg-neutral-900 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-200 text-white dark:text-neutral-900 shadow-xl rounded-2xl font-bold text-sm md:text-base tracking-tight transition-all duration-500 hover:-translate-y-1"
-            >
-              <Clock className="w-5 h-5 mr-3" />
-              {isCreatingScheduled ? "Scheduling..." : "Create Automated Post"}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Publish Immediately */}
+              <Button
+                onClick={handlePublishNow}
+                disabled={isCreatingScheduled}
+                className="flex-1 h-16 bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/20 rounded-2xl font-bold text-sm md:text-base tracking-tight transition-all duration-500 hover:-translate-y-1 border-none"
+              >
+                <Zap className="w-5 h-5 mr-3" />
+                {isCreatingScheduled ? "Publishing..." : "Publish Immediately"}
+              </Button>
+              {/* Schedule */}
+              <Button
+                onClick={handleSchedulePost}
+                disabled={isCreatingScheduled}
+                className="flex-1 h-16 bg-neutral-900 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-200 text-white dark:text-neutral-900 shadow-xl rounded-2xl font-bold text-sm md:text-base tracking-tight transition-all duration-500 hover:-translate-y-1"
+              >
+                <CalendarClock className="w-5 h-5 mr-3" />
+                {isCreatingScheduled ? "Scheduling..." : "Create Scheduled Post"}
+              </Button>
+            </div>
           )}
 
           <div className="space-y-4 pt-10 border-t border-neutral-100 dark:border-white/5">
-             <h3 className="text-xs md:text-sm font-bold tracking-wide text-neutral-400 dark:text-neutral-500 ml-1">Upcoming Queue</h3>
+            <div className="flex items-center gap-3 ml-1">
+              <h3 className="text-xs md:text-sm font-bold tracking-wide text-neutral-400 dark:text-neutral-500">Publishing History</h3>
+              {scheduled && scheduled.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500 text-[10px] font-bold tracking-wide border border-orange-500/20">
+                  {scheduled.length} {scheduled.length === 1 ? 'entry' : 'entries'}
+                </span>
+              )}
+            </div>
             <div className="space-y-3">
               {scheduled?.map((post) => {
                 const blog = blogs?.find((b) => b.id === post.blogId);
                 const site = sites?.find((s) => s.id === post.siteId);
+                const isImmediate = getPublishMethod(post);
                 return (
-                  <div key={post.id} className="group bg-neutral-50 dark:bg-white/[0.02] hover:bg-neutral-100 dark:hover:bg-white/[0.04] rounded-2xl border border-neutral-200 dark:border-white/5 p-6 flex items-center justify-between transition-all duration-500">
-                    <div className="flex-1">
-                       <p className="font-bold text-sm text-neutral-900 dark:text-white tracking-tight group-hover:text-orange-500 transition-colors">{blog?.title || "Draft Article"}</p>
-                      <div className="flex items-center gap-4 mt-2">
-                         <span className="text-xs md:text-sm text-neutral-500 dark:text-neutral-400 font-semibold tracking-wide">→ {site?.siteName || "System"}</span>
+                  <div key={post.id} className="group bg-neutral-50 dark:bg-white/[0.02] hover:bg-neutral-100 dark:hover:bg-white/[0.04] rounded-2xl border border-neutral-200 dark:border-white/5 p-3 md:p-6 flex items-center justify-between gap-3 transition-all duration-500 relative">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        {/* Method Badge */}
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold tracking-wide border flex-shrink-0 ${
+                          isImmediate
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                            : 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20'
+                        }`}>
+                          {isImmediate ? <Zap className="w-2.5 h-2.5" /> : <CalendarClock className="w-2.5 h-2.5" />}
+                          {isImmediate ? 'Instant Publish' : 'Scheduled'}
+                        </span>
+                      </div>
+                      <p className="font-bold text-sm text-neutral-900 dark:text-white tracking-tight group-hover:text-orange-500 transition-colors truncate">{blog?.title || "Draft Article"}</p>
+                      <div className="flex items-center flex-wrap gap-2 md:gap-4 mt-2">
+                        <span className="text-xs md:text-sm text-neutral-500 dark:text-neutral-400 font-semibold tracking-wide truncate max-w-[80px] md:max-w-none">→ {site?.siteName || "System"}</span>
                         <span className="flex items-center gap-1.5 text-xs md:text-sm text-orange-500 font-semibold tracking-wide">
                           <Clock className="w-3 h-3" /> {format(new Date(post.scheduledAt), "MMM d, h:mm a")}
                         </span>
-                        <span className={`px-3 py-1 rounded-full text-xs md:text-sm font-bold tracking-tight border ${post.status === "posted" ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                            post.status === "failed" ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                              'bg-orange-500/10 text-orange-500 border-orange-500/20'
-                          }`}>
-                           {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
+                        <span className={`px-2 md:px-3 py-1 rounded-full text-[9px] md:text-xs font-bold tracking-tight border flex-shrink-0 ${
+                          post.status === 'posted' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                          post.status === 'failed' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                          'bg-orange-500/10 text-orange-500 border-orange-500/20'
+                        }`}>
+                          {post.status === 'posted' ? 'Posted ✓' : post.status.charAt(0).toUpperCase() + post.status.slice(1)}
                         </span>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteScheduled(post.id)}
-                      disabled={isDeletingScheduled}
-                      className="w-10 h-10 rounded-xl bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isDeletingScheduled}
+                          className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm flex-shrink-0 relative z-10"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="w-[95vw] max-w-md bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[2rem] p-6 md:p-8 shadow-2xl">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-xl font-bold text-neutral-900 dark:text-white tracking-tight">
+                            Remove from History?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 font-medium">
+                            Remove <span className="text-orange-500 font-bold">{blog?.title || 'this post'}</span> from the publishing history? This only removes the record — it does not unpublish the post.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="pt-6 gap-3">
+                          <AlertDialogCancel className="rounded-xl h-11 px-6 text-sm font-bold bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 border-none text-neutral-900 dark:text-white">
+                            Cancel
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteScheduled(post.id)}
+                            className="bg-red-500 hover:bg-red-600 text-white rounded-xl h-11 px-6 text-sm font-bold shadow-lg shadow-red-500/20 border-none"
+                          >
+                            Remove Entry
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 );
               })}
               {(!scheduled || scheduled?.length === 0) && (
-                <div className="py-12 text-center">
-                  <p className="text-xs text-neutral-400 font-medium">No posts currently in the queue.</p>
+                <div className="py-12 text-center space-y-3">
+                  <CalendarClock className="w-10 h-10 text-neutral-300 dark:text-neutral-700 mx-auto" />
+                  <p className="text-xs md:text-sm text-neutral-400 font-semibold">No publishing history yet.</p>
+                  <p className="text-xs text-neutral-300 dark:text-neutral-600">Posts you publish or schedule will appear here.</p>
                 </div>
               )}
             </div>

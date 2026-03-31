@@ -80,8 +80,8 @@ function Router() {
     <div className="min-h-screen flex bg-stone-50 dark:bg-neutral-950 text-foreground relative selection:bg-primary/30 font-plus-jakarta">
       {user && <Sidebar />}
       {user && <MobileHeader />}
-      <main className={`flex-1 w-full pb-12 overflow-x-hidden relative z-0 ${user ? 'pt-28 px-4 md:pt-28 lg:pt-8 lg:pr-8 lg:pl-[340px] xl:pr-12 xl:pl-[360px]' : 'w-full'}`}>
-        <div className={user ? "max-w-7xl mx-auto h-full w-full" : "w-full"}>
+      <main className={`flex-1 w-full pb-12 overflow-x-hidden relative z-0 ${user ? 'pt-28 px-4 md:pt-28 lg:pt-8 lg:pr-8 lg:pl-[312px] xl:pr-12 xl:pl-[340px]' : 'w-full'}`}>
+        <div className={user ? "max-w-[1920px] h-full w-full" : "w-full"}>
           <AnimatePresence mode="wait">
             <PageTransition>
               <Switch>

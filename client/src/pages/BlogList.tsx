@@ -18,7 +18,7 @@ export default function BlogList() {
     return (
       <div className="space-y-10 animate-in fade-in duration-700">
         <SEO title="All Blogs" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           <BlogSkeleton />
           <BlogSkeleton />
           <BlogSkeleton />
@@ -79,7 +79,7 @@ export default function BlogList() {
         </div>
       ) : (
         <div className="space-y-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 xl:gap-8">
             {currentBlogs.map((blog, idx) => (
               <motion.div
                 key={blog.id}

@@ -219,7 +219,7 @@ export default function LandingPage() {
                   >
                     Yearly
                     {isYearly && (
-                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 px-3 py-1 rounded-full text-[9px] font-black border border-orange-500/20 whitespace-nowrap animate-bounce">
+                      <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-orange-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black shadow-lg shadow-orange-500/20 whitespace-nowrap animate-bounce">
                         SAVE 20%
                       </span>
                     )}

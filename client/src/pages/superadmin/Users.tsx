@@ -101,7 +101,7 @@ export default function SuperAdminUsers() {
       />
 
       {/* Header Module */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 p-6 md:p-10 bg-white dark:bg-neutral-900 rounded-[2rem] md:rounded-[3rem] border border-neutral-200 dark:border-neutral-800 shadow-xl relative overflow-hidden group">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 p-5 md:p-10 bg-white dark:bg-neutral-900 rounded-3xl md:rounded-[3rem] border border-neutral-200 dark:border-neutral-800 shadow-xl relative overflow-hidden group">
         <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full pointer-events-none" />
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-xs md:text-sm font-semibold tracking-wide mb-4">
@@ -121,9 +121,9 @@ export default function SuperAdminUsers() {
         </Button>
       </div>
 
-      <div className="premium-card rounded-[3rem]">
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[2.95rem] overflow-hidden shadow-2xl">
-          <div className="p-6 md:p-10 border-b border-neutral-200 dark:border-white/5">
+      <div className="premium-card rounded-[2rem] md:rounded-[3rem]">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[1.95rem] md:rounded-[2.95rem] overflow-hidden shadow-2xl">
+          <div className="p-4 md:p-10 border-b border-neutral-200 dark:border-white/5">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8">
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
@@ -146,30 +146,30 @@ export default function SuperAdminUsers() {
             </div>
           </div>
           <div className="hidden md:block overflow-x-auto scrollbar-hide">
-            <table className="w-full text-left border-collapse min-w-[800px]">
+            <table className="w-full text-left border-collapse min-w-[650px]">
               <thead>
                 <tr className="bg-neutral-50 dark:bg-neutral-900/50 text-neutral-500 dark:text-neutral-500 text-xs md:text-sm font-bold tracking-wide border-b border-neutral-200 dark:border-neutral-800">
-                  <th className="px-10 py-6">Account Identity</th>
-                  <th className="px-10 py-6">Unique ID</th>
-                  <th className="px-10 py-6 text-center">Subscription</th>
-                  <th className="px-10 py-6 text-center">Role</th>
-                  <th className="px-10 py-6 text-right">Actions</th>
+                  <th className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6">Account Identity</th>
+                  <th className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6">Unique ID</th>
+                  <th className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6 text-center">Subscription</th>
+                  <th className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6 text-center">Role</th>
+                  <th className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-white/5">
                 {isLoading ? (
                   Array(5).fill(0).map((_, i) => (
                     <tr key={i}>
-                      <td className="px-10 py-8"><Skeleton className="h-12 w-48 rounded-xl bg-white/5" /></td>
-                      <td className="px-10 py-8"><Skeleton className="h-4 w-48 bg-white/5" /></td>
-                      <td className="px-10 py-8"><Skeleton className="h-8 w-24 rounded-full mx-auto bg-white/5" /></td>
-                      <td className="px-10 py-8"><Skeleton className="h-8 w-16 rounded-full mx-auto bg-white/5" /></td>
-                      <td className="px-10 py-8 text-right"><Skeleton className="h-10 w-32 rounded-xl ml-auto bg-white/5" /></td>
+                      <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-8"><Skeleton className="h-12 w-48 rounded-xl bg-white/5" /></td>
+                      <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-8"><Skeleton className="h-4 w-48 bg-white/5" /></td>
+                      <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-8"><Skeleton className="h-8 w-24 rounded-full mx-auto bg-white/5" /></td>
+                      <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-8"><Skeleton className="h-8 w-16 rounded-full mx-auto bg-white/5" /></td>
+                      <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-8 text-right"><Skeleton className="h-10 w-32 rounded-xl ml-auto bg-white/5" /></td>
                     </tr>
                   ))
                 ) : filteredUsers?.map((user) => (
                   <tr key={user.id} className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="px-10 py-4 md:py-8">
+                    <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-8">
                       <div className="flex items-center gap-3 md:gap-5">
                         <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-orange-500/10 flex items-center justify-center p-[1px] group-hover:bg-orange-500/20 transition-all duration-500">
                           <div className="w-full h-full bg-white dark:bg-neutral-800 rounded-xl md:rounded-2xl flex items-center justify-center font-bold text-orange-500 text-base md:text-lg shadow-sm">
@@ -182,17 +182,17 @@ export default function SuperAdminUsers() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-10 py-4 md:py-8">
+                    <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-8">
                       <span className="px-2.5 py-1 bg-white/5 rounded-xl border border-white/5 font-mono text-[10px] md:text-xs text-muted-foreground tracking-tighter opacity-60 whitespace-nowrap">
                         {user.clientId}
                       </span>
                     </td>
-                    <td className="px-10 py-4 md:py-8 text-center">
+                    <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-8 text-center">
                       <span className="px-4 py-1.5 rounded-full text-xs md:text-sm font-bold tracking-wide bg-orange-500/10 text-orange-500 border border-orange-500/20 whitespace-nowrap">
                         {user.plan}
                       </span>
                     </td>
-                    <td className="px-10 py-4 md:py-8 text-center">
+                    <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-8 text-center">
                       <span className={`px-4 py-1.5 rounded-full text-xs md:text-sm font-bold tracking-wide border ${user.role === 'superadmin'
                         ? 'bg-red-500/10 text-red-500 border-red-500/20'
                         : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
@@ -200,7 +200,7 @@ export default function SuperAdminUsers() {
                         {user.role}
                       </span>
                     </td>
-                    <td className="px-10 py-4 md:py-8">
+                    <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-8">
                       <div className="flex justify-end gap-3 text-glow">
                         <Button
                           variant="outline"
@@ -263,56 +263,58 @@ export default function SuperAdminUsers() {
                 </div>
               ))
             ) : filteredUsers?.map((user) => (
-              <div key={user.id} className="p-6 space-y-6 bg-white dark:bg-neutral-900/50">
+              <div key={user.id} className="p-3 xs:p-4 space-y-4 bg-white dark:bg-neutral-900/50">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center font-bold text-orange-500 text-lg border border-orange-500/20">
+                  <div className="flex items-center gap-2.5 md:gap-4 flex-1 min-w-0">
+                    <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl bg-orange-500/10 flex items-center justify-center font-bold text-orange-500 text-sm md:text-lg border border-orange-500/20 flex-shrink-0">
                       {user.username.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <p className="font-bold text-neutral-900 dark:text-white">{user.username}</p>
-                      <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-black mt-1">
+                    <div className="min-w-0">
+                      <p className="font-bold text-neutral-900 dark:text-white truncate text-xs md:text-base">{user.username}</p>
+                      <p className="text-[8px] md:text-[9px] text-neutral-500 uppercase tracking-widest font-black mt-0.5">
                         JOINED: {new Date(user.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter border ${user.role === 'superadmin' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
+                  <div className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter border flex-shrink-0 ${user.role === 'superadmin' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
                     {user.role}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-800">
-                    <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">Tier</p>
-                    <p className="text-xs font-bold text-orange-500">{user.plan}</p>
+                <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
+                  <div className="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-800">
+                    <p className="text-[8px] font-black text-neutral-400 uppercase tracking-widest mb-0.5">Tier</p>
+                    <p className="text-[10px] font-bold text-orange-500">{user.plan}</p>
                   </div>
-                  <div className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-                    <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">Client ID</p>
-                    <p className="text-[10px] font-mono text-neutral-500 truncate">{user.clientId}</p>
+                  <div className="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-800 overflow-hidden">
+                    <p className="text-[8px] font-black text-neutral-400 uppercase tracking-widest mb-0.5">Client ID</p>
+                    <p className="text-[8px] font-mono text-neutral-500 truncate">{user.clientId}</p>
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1 h-12 rounded-xl text-xs font-bold border-neutral-200 dark:border-neutral-800"
-                    onClick={() => { setSelectedUser(user); setIsInfoOpen(true); }}
-                  >
-                    <Info className="w-3.5 h-3.5 mr-2" /> Analytics
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="flex-1 h-12 rounded-xl text-xs font-bold border-neutral-200 dark:border-neutral-800"
-                    onClick={() => { setSelectedUser(user); setIsMailOpen(true); }}
-                  >
-                    <Mail className="w-3.5 h-3.5 mr-2" /> Mail
-                  </Button>
+                <div className="flex flex-col xs:flex-row gap-2">
+                  <div className="flex gap-2 flex-1">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 h-10 rounded-xl text-[9px] font-bold border-neutral-200 dark:border-neutral-800 px-2"
+                      onClick={() => { setSelectedUser(user); setIsInfoOpen(true); }}
+                    >
+                      <Info className="w-3 h-3 mr-1" /> Analytics
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 h-10 rounded-xl text-[9px] font-bold border-neutral-200 dark:border-neutral-800 px-2"
+                      onClick={() => { setSelectedUser(user); setIsMailOpen(true); }}
+                    >
+                      <Mail className="w-3 h-3 mr-1" /> Mail
+                    </Button>
+                  </div>
                   {user.role !== 'superadmin' && (
                     <Button 
-                      className="w-12 h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shrink-0 shadow-lg shadow-emerald-500/20 px-0"
+                      className="w-full xs:w-10 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shrink-0 shadow-lg shadow-emerald-500/20 px-0"
                       onClick={() => impersonateMutation.mutate(user.id)}
                     >
-                      <LogIn className="w-4 h-4" />
+                      <LogIn className="w-3.5 h-3.5" />
                     </Button>
                   )}
                 </div>

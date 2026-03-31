@@ -217,7 +217,7 @@ export default function EditBlog() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-10 pb-32 animate-in fade-in duration-700 font-plus-jakarta">
+    <div className="max-w-[1600px] w-full space-y-10 pb-32 animate-in fade-in duration-700 font-plus-jakarta">
       {/* Header Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between sticky top-0 z-30 bg-white dark:bg-neutral-950 py-4 md:py-6 border-b border-neutral-200 dark:border-neutral-800 -mx-4 px-4 md:-mx-8 md:px-12 transition-all">
         <div className="flex items-center gap-5">

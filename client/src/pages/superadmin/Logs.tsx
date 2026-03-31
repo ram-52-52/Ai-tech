@@ -118,20 +118,20 @@ export default function SuperAdminLogs() {
         
         <div className="p-0">
           <div className="overflow-x-auto min-h-[500px]">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[650px]">
               <thead>
                 <tr className="bg-neutral-50 dark:bg-neutral-800/50 text-xs md:text-sm font-bold text-neutral-500 dark:text-neutral-400 tracking-wide border-b border-neutral-200 dark:border-neutral-800">
-                  <th className="px-10 py-6">Status</th>
-                  <th className="px-10 py-6">Action Type</th>
-                  <th className="px-10 py-6">Member Identity</th>
-                  <th className="px-10 py-6">Activity Details</th>
-                  <th className="px-10 py-6 text-right">Timestamp</th>
+                  <th className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6">Status</th>
+                  <th className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6">Action Type</th>
+                  <th className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6">Member Identity</th>
+                  <th className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6">Activity Details</th>
+                  <th className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6 text-right">Timestamp</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-white/5">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-10 py-32 text-center">
+                    <td colSpan={5} className="px-4 lg:px-6 xl:px-10 py-20 lg:py-32 text-center">
                       <div className="flex flex-col items-center gap-4">
                         <RefreshCw className="w-10 h-10 text-orange-500 animate-spin opacity-20" />
                         <span className="text-xs md:text-sm font-bold tracking-wide text-neutral-400">Syncing Content...</span>
@@ -140,14 +140,14 @@ export default function SuperAdminLogs() {
                   </tr>
                 ) : logs.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-10 py-32 text-center text-xs md:text-sm font-bold tracking-wide text-neutral-400">
+                    <td colSpan={5} className="px-4 lg:px-6 xl:px-10 py-20 lg:py-32 text-center text-xs md:text-sm font-bold tracking-wide text-neutral-400">
                       No logs found for the selected search criteria.
                     </td>
                   </tr>
                 ) : (
                   logs.map((log) => (
                     <tr key={log.id} className="hover:bg-orange-500/[0.02] transition-all duration-300 group">
-                      <td className="px-10 py-6">
+                      <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6">
                         <div className="flex items-center gap-3 text-xs md:text-sm font-bold tracking-wide">
                           <div className={cn(
                             "w-2 h-2 rounded-full",
@@ -166,20 +166,20 @@ export default function SuperAdminLogs() {
                           </span>
                         </div>
                       </td>
-                      <td className="px-10 py-6">
+                      <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6">
                         <span className="text-sm md:text-base font-bold tracking-tight text-neutral-900 dark:text-white">{log.action}</span>
                       </td>
-                      <td className="px-10 py-6">
+                      <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6">
                         <span className="px-3 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-xs md:text-sm font-bold tracking-wide border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400">
                           {log.username || "System Core"}
                         </span>
                       </td>
-                      <td className="px-10 py-6">
-                        <p className="text-xs md:text-sm font-medium text-neutral-500 dark:text-neutral-400 max-w-sm truncate">
+                      <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6">
+                        <p className="text-xs md:text-sm font-medium text-neutral-500 dark:text-neutral-400 max-w-sm xl:max-w-md truncate">
                           {log.details || "System automated acknowledgment"}
                         </p>
                       </td>
-                      <td className="px-10 py-6 text-right">
+                      <td className="px-4 lg:px-6 xl:px-10 py-4 lg:py-6 text-right">
                         <span className="text-xs md:text-sm font-bold text-neutral-400 dark:text-neutral-500">
                           {log.timestamp ? format(new Date(log.timestamp), "HH:mm:ss") : "00:00:00"}
                         </span>

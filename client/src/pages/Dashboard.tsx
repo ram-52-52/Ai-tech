@@ -93,8 +93,8 @@ export default function Dashboard() {
 
       {/* Stats Row */}
       <motion.div variants={itemVariants} className={cn(
-        "grid grid-cols-1 sm:grid-cols-2 gap-6",
-        isSuperAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3"
+        "grid grid-cols-1 md:grid-cols-2 gap-4 xl:gap-6",
+        isSuperAdmin ? "lg:grid-cols-2 xl:grid-cols-4" : "lg:grid-cols-3"
       )}>
         <StatCard 
           title={isSuperAdmin ? "Total Platform Blogs" : "My Total Blogs"} 
@@ -122,9 +122,9 @@ export default function Dashboard() {
         )}
       </motion.div>
 
-      <motion.div variants={containerVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-12">
+      <motion.div variants={containerVariants} className="grid grid-cols-1 xl:grid-cols-3 gap-6 xl:gap-10 mt-8 xl:mt-12">
         {/* Recent Blogs Section */}
-        <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
+        <motion.div variants={itemVariants} className="xl:col-span-2 space-y-6">
           <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-4">
             <h2 className="text-xl md:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">Recent <span className="text-orange-500">Blogs</span></h2>
             <Link href="/blogs" className="text-xs md:text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors flex items-center gap-2">

@@ -44,7 +44,7 @@ export default function Trends() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 xl:gap-8">
         {trends?.map((trend, idx) => (
           <motion.div
             key={trend.id}
@@ -53,7 +53,7 @@ export default function Trends() {
             transition={{ delay: idx * 0.05, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="premium-card group rounded-[2.5rem] hover:-translate-y-2 transition-all duration-700 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800"
           >
-            <div className="p-8 h-full flex flex-col relative overflow-hidden">
+            <div className="p-6 xl:p-8 h-full flex flex-col relative overflow-hidden">
                <div className="absolute top-0 right-0 w-32 h-32 rounded-full" />
                               <div className="flex justify-between items-start mb-8 relative z-10">
                    <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-all duration-500 shadow-inner">
